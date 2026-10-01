@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from conftest import repo
-from scoring import score_candidate
+from snb.scoring import score_candidate
 
 NOW = datetime(2026, 9, 15, tzinfo=timezone.utc)
 

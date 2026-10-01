@@ -1,116 +1,280 @@
 # Security Network Builder
 
-> A security engineering intelligence platform for discovering, analyzing, and connecting with engineers working in similar cybersecurity domains.
+[![CI](https://github.com/locallhosts/security-network-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/locallhosts/security-network-builder/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 **Security Engineer Discovery and Intelligence Platform**
+
+Discover, analyze, and rank engineers on GitHub by cybersecurity specialization, using technical signals instead of follower counts. Every recommendation comes with a score breakdown and the evidence behind it.
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Quick Start](#quick-start)
+- [Usage](#usage)
+- [Dashboard](#dashboard)
+- [Configuration](#configuration)
+- [How It Works](#how-it-works)
+- [Architecture](#architecture)
+- [Security Domains](#security-domains)
+- [Project Structure](#project-structure)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting)
+- [Security and Privacy](#security-and-privacy)
+- [Responsible Use](#responsible-use)
+- [Future Work](#future-work)
+- [License](#license)
 
 ---
 
 ## Overview
 
-Security Network Builder automates the discovery and ranking of engineers on GitHub based on their security specialization, so you can find relevant peers, maintainers, and collaborators without hours of manual searching.
+Security professionals often want to build meaningful technical networks, but follower-based discovery rewards popularity, not expertise. Finding the right people by hand is slow.
 
-**What problem does this solve?**
-Finding relevant security engineers manually is time consuming. Follower counts and stars measure popularity, not expertise.
+GitHub holds strong signals of real engineering work: repositories, topics, languages, commit and review activity, and organization memberships. Security Network Builder turns those signals into a ranked, explainable list of engineers who work in the domains you care about.
 
-**Why was it built?**
-GitHub contains valuable technical signals that are rarely used for discovery:
-
-- repositories
-- commits
-- topics
-- contributions
-- technical domains
-
-This project turns those signals into a ranked, explainable list of engineers.
-
-**Who is it for?**
+**Who it is for**
 
 - Security engineers who want a technically aligned professional network
 - Detection, cloud, and runtime security practitioners looking for collaborators
 - Open source contributors searching for maintainers in a specific domain
-- Recruiters and community builders mapping security engineering ecosystems
+- Community builders and recruiters mapping security engineering ecosystems
+
+**Design principles**
+
+- **Expertise over popularity.** Star and follower contributions are capped so they cannot dominate a score.
+- **Explainable.** Every point in a score is itemized and backed by evidence.
+- **Read-only.** The tool never follows, stars, or messages anyone. Outreach is always your own decision.
+- **Local-first.** Data stays on your machine; the optional AI features are opt-in.
 
 ---
 
-## Problem Statement
+## Key Features
 
-Security professionals often want to build meaningful technical networks, but traditional follower discovery is based on popularity rather than expertise.
-
-This project focuses on:
-
-- technical alignment
-- engineering contribution
-- security specialization
-- active development
-
----
-
-## Goals
-
-### Primary Goals
-
-- Discover security engineers from GitHub
-- Identify engineers by technical domain
-- Rank candidates using security relevance
-- Provide explainable recommendations
-
-### Non Goals
-
-- Not a follower farming tool
-- Not a mass follow bot
-- Not a social scraping system
-- Not intended to spam users
+| Capability | Description |
+|---|---|
+| **Profile-driven discovery** | Define your security domains, keywords, and search queries in YAML. The tool searches GitHub accordingly. |
+| **Explainable scoring** | Domain match, recent activity, traction, language fit, and reputation, each itemized in the report. |
+| **GraphQL and REST** | With a token, GraphQL batches 10 engineers per request. Without one, it falls back to REST. |
+| **Reputation signals** | Contribution volume, code review activity, and account tenure, with followers capped at a minor share. |
+| **Relationship graph** | Co-contribution, shared organizations, and overlapping domains produce edges, centrality, and communities. |
+| **Contributor expansion** | `--expand N` finds and scores contributors of the top engineers' repositories. |
+| **Organization analysis** | Shows which organizations concentrate the engineers you found. |
+| **Run history and diffs** | Every run is stored locally. See who is new, who dropped off, and whose score moved. |
+| **Local dashboard** | Ranking, interactive graph, score breakdowns, history, and private triage notes in the browser. |
+| **Explanations** | Deterministic offline explanations, with optional LLM-written ones (`--ai`). |
+| **Profile suggestion** | Proposes a profile from your own public repositories. |
+| **Preflight checks** | `snb doctor` validates your token, rate limits, profile, and paths before a run. |
 
 ---
 
-## Architecture
+## Quick Start
 
-```
-Security Profile
-       |
-       v
-GitHub Discovery Engine
-       |
-       v
-Repository Analysis
-       |
-       v
-Engineer Scoring Engine
-       |
-       v
-Recommendation Report
+### 1. Install
+
+Requires **Python 3.10 or newer**.
+
+```bash
+git clone https://github.com/locallhosts/security-network-builder
+cd security-network-builder
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 ```
 
-*(Detailed diagram to be added.)*
+This installs the `snb` command (also available as `python -m snb`).
+
+> Run each command on its own line. Pasting trailing `# comments` into zsh can cause errors.
+
+### 2. Add a GitHub token
+
+A token raises your rate limits and enables the faster GraphQL mode. This tool only reads public data, so the token needs **no permissions**.
+
+1. GitHub → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**
+2. Set repository access to **Public repositories (read-only)** and grant no additional permissions.
+3. Save it to a local `.env` file (git-ignored):
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` and set:
+
+```
+GITHUB_TOKEN=your_token_here
+```
+
+### 3. Set your username
+
+Edit `profiles/security_profile.yaml` and set `github_username` to your own login, so you are excluded from your own results.
+
+### 4. Verify your setup
+
+```bash
+snb doctor
+```
+
+You should see `[ OK ]` for the token, GraphQL access, and rate limits. Warnings explain what to fix; failures stop the run with a clear reason.
+
+### 5. Run a first discovery
+
+```bash
+snb --queries-per-domain 1 --max-candidates 10 --top 5
+```
+
+This is a deliberately small run (about a minute with a token):
+
+| Option | Effect |
+|---|---|
+| `--queries-per-domain 1` | Runs one search query per security domain instead of all of them, which saves API calls. |
+| `--max-candidates 10` | Analyzes the 10 most promising engineers in depth. |
+| `--top 5` | Keeps the 5 best-scoring engineers in the report. |
+
+Results are printed to the terminal, written to `reports/` as Markdown and JSON, and saved to the local history database.
+
+### 6. Open the dashboard
+
+```bash
+snb dashboard --open
+```
+
+This starts a local server on `http://127.0.0.1:8765` and opens it in your browser. Press `Ctrl-C` in the terminal to stop it. The dashboard needs at least one recorded run, so complete step 5 first.
+
+Once the small run looks right, drop the limiting options for a full run:
+
+```bash
+snb
+```
 
 ---
 
-## Security Domains
+## Usage
 
-### Detection Engineering
+### Discovery runs
 
-Technologies: Sigma, YARA, SIEM, SOAR, MITRE ATT&CK
+```bash
+snb                                   # full run with profile defaults
+snb --top 25 --min-score 15           # larger, stricter report
+snb --queries-per-domain 1            # quick run, fewer API calls
+snb --profile profiles/mine.yaml      # use a custom profile
+snb --expand 5                        # also analyze contributors of the top 5 engineers' repos
+snb --api rest                        # force REST (no token required)
+snb --ai                              # LLM explanations (requires ANTHROPIC_API_KEY)
+snb --no-report                       # print only, write no report files
+snb --include-ignored                 # include engineers you marked as ignored
+```
 
-### Linux / eBPF Security
+### Other commands
 
-Technologies: eBPF, kernel security, runtime security, Falco
+```bash
+snb doctor                            # preflight checks (add --offline to skip network checks)
+snb dashboard --open                  # local web dashboard (add --port to change the port)
+snb history                           # list past runs
+snb history --diff                    # what changed since the previous run
+snb history --login alice             # score trend for one engineer
+snb history --set alice reviewing --note "check eBPF repo"
+snb profile-suggest --github-user YOU # propose a profile from your own repositories
+snb --version
+```
 
-### Cloud Security
+### Example output
 
-Technologies: AWS, Kubernetes, Terraform, DevSecOps
+The format looks like this (names and numbers are illustrative):
 
-### Identity and Zero Trust
+```
+Building security network... [GRAPHQL]
 
-Technologies: SPIFFE/SPIRE, IAM, mTLS, workload identity
+Searching:
+sigma detection
 
-### Application Security
+Found 54 engineers; analysing top 10...
 
-Technologies: OWASP, API Security, secure coding
+Recommended Engineers:
 
-### Security Automation
+@developer
 
-Technologies: Python, Go, security tooling
+Score: 35
+
+Areas:
+- Linux / eBPF Security
+- Detection Engineering
+
+Why: @developer scored 35, matching Linux / eBPF Security and Detection Engineering.
+Strongest signal: developer/tracer (500 stars). Matching work is recent.
+
+Report written: reports/report_20261001_120000.md
+Saved as run #1. View with: snb dashboard
+```
+
+---
+
+## Dashboard
+
+```bash
+snb dashboard --open
+```
+
+The dashboard is a local, read-only view of your run history:
+
+- **Ranking** with filters by security area, triage status, and free-text search
+- **Relationship graph** showing engineers as nodes (sized by score, colored by community) connected by shared repositories, organizations, and domains
+- **Changes since previous run**: new engineers, dropped engineers, and score movers
+- **Organizations** that concentrate matching engineers
+- **Engineer detail** with explanation, itemized score breakdown, evidence, matching repositories, and score history
+- **Triage notes** (`reviewing`, `connected`, `ignored`, plus a private note). These are stored locally as your own notebook; nothing is sent to GitHub.
+
+The server binds to `127.0.0.1` only. See [Security and Privacy](#security-and-privacy) for its protections.
+
+---
+
+## Configuration
+
+### Environment variables
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `GITHUB_TOKEN` | Recommended | Higher rate limits and GraphQL mode. No permissions needed. |
+| `ANTHROPIC_API_KEY` | Optional | Only used with `--ai`. |
+| `ANTHROPIC_MODEL` | Optional | Overrides the default model used by `--ai`. |
+
+### Security profile
+
+The profile defines what you are looking for. By default `snb` reads `profiles/security_profile.yaml` in the current directory, and falls back to a profile bundled with the package if that file is not present.
+
+```yaml
+name: Security Engineer
+github_username: "your-login"      # excluded from results
+
+settings:
+  min_stars: 5                     # minimum stars on a seed repository
+  active_within_days: 365          # seed repositories must have been pushed to recently
+  results_per_query: 30
+  max_candidates: 30               # engineers analyzed in depth per run
+  max_repos_per_user: 100
+  users_only: true                 # skip organizations
+  include_forks: false
+  preferred_languages: [Python, Go, Rust]
+  exclude_users: []
+
+domains:
+  ebpf_linux_security:
+    label: Linux / eBPF Security
+    weight: 10                     # points for a matching engineer
+    keywords: [ebpf, runtime security, falco, tetragon]
+    search_queries: ["ebpf security", "topic:ebpf"]
+```
+
+To bootstrap a profile from your own work:
+
+```bash
+snb profile-suggest --github-user YOUR_LOGIN
+```
+
+This reads your public repositories and writes `profiles/suggested_profile.yaml` for you to review.
 
 ---
 
@@ -118,120 +282,74 @@ Technologies: Python, Go, security tooling
 
 ### 1. Discovery
 
-Searches GitHub for:
+Your profile's search queries run against the GitHub Search API, filtered to active, non-fork, non-archived repositories above a star threshold. Repository owners become candidates. Organizations and excluded users are removed.
 
-- security repositories
-- maintainers
-- contributors
-- engineers
+### 2. Analysis
 
-### 2. Profile Analysis
+Candidates are pre-ranked, and the top ones are analyzed in depth. With a token, GraphQL fetches repositories, topics, organization memberships, and contribution statistics for 10 engineers per request. Otherwise the REST API is used.
 
-Analyzes:
+### 3. Scoring
 
-- repository names
-- descriptions
-- topics
-- programming languages
-- activity
+Each engineer is scored from their public repositories. Keywords are matched as whole words against repository names, descriptions, and topics, so `iam` does not match `william`.
 
-### 3. Scoring Engine
+| Component | Points |
+|---|---|
+| Domain match | Domain weight from your profile (first matching repo) |
+| Additional matching repos in the same domain | +1 each, up to +3 |
+| Recent activity | +3 if pushed within 90 days, +1 within a year |
+| Community traction | log-scaled stars, up to +3 |
+| Preferred language | +1 |
+| Reputation | up to +6 (see below) |
 
-Domain weights come from your profile:
+**Reputation** is deliberately hard to game: followers contribute at most +2; contribution volume over the last year contributes +1 or +2; code review activity adds +1; account tenure of three years or more adds +1. Contribution and review data requires GraphQL (a token). In REST mode only followers and tenure are available.
 
-```
-Detection Engineering   +10
-eBPF Security           +10
-Cloud Security          +8
-Zero Trust              +9
-Security Automation     +7
-```
+### 4. Relationships
 
-Plus: +1 per additional matching repo in a domain (max +3), recent activity (+3 within 90 days, +1 within a year), log-scaled star traction (max +3, so popularity cannot dominate), and +1 for preferred languages. Every point appears in the report's score breakdown.
+The final list is turned into a graph. Edges come from shared repository contributions (weight 4), shared organizations (weight 3 per organization), and two or more overlapping domains (weight 1 per domain). Weighted-degree centrality and deterministic community detection are computed from it.
 
-### 4. Recommendation
+### 5. Reporting and history
 
-Produces an explainable report:
+Results are explained in plain language, written to `reports/` as Markdown and JSON, and stored in a local SQLite database so later runs can flag new engineers and show score changes.
+
+---
+
+## Architecture
 
 ```
-Engineer:  @username
-Score:     32
-
-Matched Areas:
-  ✓ eBPF
-  ✓ Linux Security
-  ✓ Runtime Security
-
-Evidence:
-  - Maintains security tooling
-  - Active commits
-  - Related repositories
+          Security Profile (YAML)
+                    │
+                    ▼
+        Discovery (GitHub Search API)
+                    │
+                    ▼
+     Analysis (GraphQL batches, REST fallback)
+                    │
+                    ▼
+       Scoring Engine + Reputation Signals
+                    │
+        ┌───────────┼────────────────┐
+        ▼           ▼                ▼
+  Relationship   Explanations    History
+  Graph + Orgs   (offline / AI)  (SQLite)
+        └───────────┼────────────────┘
+                    ▼
+        Reports (Markdown, JSON)  ·  Dashboard
 ```
 
 ---
 
-## Installation
+## Security Domains
 
-```bash
-git clone https://github.com/locallhosts/security-network-builder
-cd security-network-builder
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-```
+The default profile covers six domains. All are fully configurable.
 
-Requires Python 3.10+.
-
----
-
-## Configuration
-
-**Environment variables**
-
-```bash
-cp .env.example .env      # then set GITHUB_TOKEN
-```
-
-A token with **no scopes** is enough (public data only). Without one the tool still runs, but anonymous GitHub limits are low (10 searches/min, 60 calls/hour).
-
-**Security profile**
-
-```
-profiles/security_profile.yaml
-```
-
----
-
-## Usage
-
-```bash
-python src/main.py                                  # defaults
-python src/main.py --top 25 --min-score 15          # bigger, stricter report
-python src/main.py --queries-per-domain 1           # quick run, fewer API calls
-python src/main.py --profile profiles/mine.yaml     # your own profile
-python src/main.py --no-report                      # print only
-```
-
-Reports are written to `reports/` as Markdown and JSON.
-
-Example output:
-
-```
-Building security network...
-
-Searching:
-ebpf security
-
-Searching:
-sigma detection
-
-Recommended Engineers:
-
-@developer
-Score: 35
-Areas:
-  - eBPF
-  - Detection Engineering
-```
+| Domain | Example technologies |
+|---|---|
+| **Detection Engineering** | Sigma, YARA, SIEM, SOAR, MITRE ATT&CK |
+| **Linux / eBPF Security** | eBPF, kernel security, runtime security, Falco |
+| **Cloud Security** | AWS, Kubernetes, Terraform, DevSecOps |
+| **Identity and Zero Trust** | SPIFFE/SPIRE, IAM, mTLS, workload identity |
+| **Application Security** | OWASP, API security, secure coding |
+| **Security Automation** | Python, Go, security tooling |
 
 ---
 
@@ -239,78 +357,109 @@ Areas:
 
 ```
 security-network-builder/
-├── src/
-│   ├── main.py          # CLI entry point and pipeline
-│   ├── config.py        # profile loading, validation, keyword matching
-│   ├── github_api.py    # read-only GitHub REST client with rate-limit handling
-│   ├── discovery.py     # profile -> GitHub searches -> candidate engineers
-│   ├── scoring.py       # explainable scoring engine
-│   ├── models.py        # Candidate / Recommendation dataclasses
-│   └── report.py        # console, Markdown and JSON output
+├── src/snb/
+│   ├── main.py             # CLI, pipeline, command dispatch
+│   ├── doctor.py           # preflight checks
+│   ├── config.py           # profile loading and keyword matching
+│   ├── github_api.py       # read-only REST and GraphQL transport, rate-limit handling
+│   ├── graphql_api.py      # batched GraphQL fetching
+│   ├── discovery.py        # profile to GitHub searches to candidates
+│   ├── scoring.py          # explainable scoring engine
+│   ├── reputation.py       # capped reputation signals
+│   ├── graph.py            # relationship graph, centrality, communities
+│   ├── orgs.py             # organization analysis
+│   ├── history.py          # SQLite run history, triage notes, run diffs
+│   ├── explain.py          # offline and optional LLM explanations
+│   ├── profile_builder.py  # profile suggestion
+│   ├── dashboard.py        # hardened local HTTP server
+│   ├── dashboard_page.py   # single-page UI
+│   ├── default_profile.yaml
+│   ├── models.py
+│   └── report.py
 ├── profiles/
-│   └── security_profile.yaml
-├── reports/
-├── tests/               # pytest suite (runs offline)
-├── requirements.txt
+│   └── security_profile.yaml   # your editable profile
+├── tests/                  # offline pytest suite, plus a jsdom dashboard test
+├── .github/                # CI workflow and Dependabot configuration
+├── pyproject.toml
 ├── .env.example
 └── README.md
 ```
 
 ---
 
-## Roadmap
-
-### Phase 1
-- [x] GitHub discovery
-- [x] Security profile matching
-- [x] Ranking system
-
-### Phase 2
-- [ ] GitHub GraphQL integration
-- [ ] Contributor graph analysis
-- [ ] Organization analysis
-- [ ] Better reputation scoring
-
-### Phase 3
-- [ ] Web dashboard
-- [ ] Engineer relationship graph
-- [ ] Recommendation history
-
-### Phase 4
-- [ ] AI-assisted security profile analysis
-- [ ] Natural language explanations
-
----
-
-## Testing
+## Development
 
 ```bash
-python -m pytest
+pip install -e ".[dev]"
+python -m pytest                        # offline unit and integration tests
 ```
 
-The suite runs offline against fake GitHub responses.
+The test suite runs entirely offline against fake GitHub responses.
+
+The dashboard also has a DOM-level test. It starts a real server seeded with hostile data (script tags, `javascript:` URLs, event-handler payloads) and drives the page in jsdom to confirm nothing executes:
+
+```bash
+npm ci --prefix tests/web               # one-time: installs jsdom
+python -m pytest tests/test_dashboard_dom.py
+```
+
+jsdom is a DOM implementation, not a full browser: it does not render CSS or enforce Content Security Policy (CSP headers are verified separately at the server level). The DOM test is skipped automatically when Node or jsdom is unavailable.
+
+Continuous integration (`.github/workflows/ci.yml`) runs the tests on Python 3.10 to 3.12, runs the DOM test, and builds and smoke-tests the wheel in a clean virtual environment.
 
 ---
 
-## Security Considerations
+## Troubleshooting
 
-- The GitHub client is read-only: the tool never follows, stars, or messages anyone
-
-- GitHub tokens are stored locally
-- API rate limits are respected
-- No private repository access required
-- No credentials collected
-- No automated interaction without user approval
+| Symptom | Likely cause and fix |
+|---|---|
+| `snb: command not found` | The virtual environment is not active, or the install failed. Run `source .venv/bin/activate`, then `pip install -e ".[dev]"`. You can also use `python -m snb`. |
+| `Invalid requirement: '#'` during install | A `# comment` was pasted onto the command line in zsh. Run the command on its own. |
+| `ERROR: .[dev], is not a valid editable requirement` | A trailing comma was copied with the command. Use exactly `pip install -e ".[dev]"`. |
+| Python version too old | This project needs Python 3.10+. Check with `.venv/bin/python --version` and recreate the virtual environment with a newer interpreter if needed. |
+| `rate limited; reset in ~N s` | Anonymous GitHub limits are low. Add a `GITHUB_TOKEN` to `.env`, or wait for the reset. Use `--queries-per-domain 1` to save calls. |
+| `snb doctor` warns about token scopes | Your classic token has broader scopes than needed. Use a fine-grained token with no permissions. |
+| GraphQL warning in `snb doctor` | The tool falls back to REST automatically. Check that the token is valid and not expired. |
+| Dashboard shows "No runs yet" | Complete a discovery run first (`snb --queries-per-domain 1 --max-candidates 10 --top 5`). |
+| Dashboard port already in use | Choose another: `snb dashboard --port 8766 --open`. |
 
 ---
 
-## Technologies
+## Security and Privacy
 
-- Python
-- GitHub REST API
-- GitHub GraphQL API
-- JSON / YAML
-- GitHub Actions
+- **Read-only.** The GitHub client has no follow, star, or message capability.
+- **Local storage.** Tokens live in `.env` (git-ignored). Run history and triage notes stay in a local SQLite file.
+- **Public data only.** No private repository access is needed or requested. No credentials are collected.
+- **Rate limits respected.** Requests back off on rate limiting, and partial results are kept if a limit is reached mid-run.
+- **No automated interaction.** Triage states such as `connected` are your own private notes.
+- **Hardened dashboard.** It binds to `127.0.0.1` only, validates the `Host` header (DNS-rebinding defense), requires a per-launch CSRF token for writes, and sends a strict Content Security Policy. All GitHub-sourced text is rendered as plain text, never as HTML, and links are restricted to `github.com`.
+- **Opt-in AI.** `--ai` sends only public repository metadata and computed scores to the Anthropic API, and instructs the model to treat GitHub text as untrusted data.
+- **Token hygiene.** If a token is ever committed, revoke it on GitHub immediately; deleting the commit is not enough.
+
+---
+
+## Responsible Use
+
+This project exists to help people find technically relevant peers and collaborators. It is intentionally not:
+
+- a follower-farming tool
+- a mass-follow or mass-message bot
+- a social scraping system
+- a way to contact people who have not invited it
+
+Please follow [GitHub's Acceptable Use Policies](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies) and API terms, and treat the people in your reports with respect. Review a recommendation's evidence before reaching out, and keep any outreach personal and relevant.
+
+---
+
+## Future Work
+
+Possible next steps, in no particular order:
+
+- Scheduled recurring runs with automatic diff summaries
+- Publishing to PyPI
+- Comparing multiple profiles side by side
+- Additional public signal sources beyond GitHub
+- Exporting the relationship graph to standard graph formats
 
 ---
 
@@ -322,4 +471,4 @@ I built this project to explore how security engineering communities can be disc
 
 ## License
 
-MIT License
+Released under the [MIT License](LICENSE).

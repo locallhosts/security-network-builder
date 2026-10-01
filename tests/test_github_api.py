@@ -1,7 +1,7 @@
 import pytest
 import requests
 
-from github_api import GitHubClient, NotFoundError, RateLimitError
+from snb.github_api import GitHubClient, GitHubError, NotFoundError, RateLimitError
 
 
 class Resp:
@@ -21,6 +21,8 @@ class FakeSession(requests.Session):
     def get(self, url, **kw):
         self.calls += 1
         return self.responses.pop(0)
+
+    post = get
 
 
 def client(responses, token="t"):
@@ -55,3 +57,36 @@ def test_404_handled():
 def test_search_returns_items():
     c, _ = client([Resp(200, {"items": [{"id": 1}]})])
     assert c.search_repositories("q") == [{"id": 1}]
+
+
+def test_204_means_empty_list():
+    c, _ = client([Resp(204)])
+    assert c.list_contributors("o/empty") == []
+
+
+def test_contributors_filter_bots_and_swallow_errors():
+    c, _ = client([Resp(200, [{"login": "a", "type": "User"}, {"login": "dependabot[bot]", "type": "Bot"}]),
+                   Resp(403, text="The history or contributor list is too large")])
+    assert [u["login"] for u in c.list_contributors("o/r")] == ["a"]
+    assert c.list_contributors("o/huge") == []
+
+
+def test_graphql_requires_token():
+    c, _ = client([], token=None)
+    with pytest.raises(GitHubError):
+        c.graphql("query { viewer { login } }")
+
+
+def test_graphql_returns_partial_data_and_detects_rate_limit():
+    c, _ = client([Resp(200, {"data": {"u0": None}, "errors": [{"type": "NOT_FOUND"}]})])
+    data, errors = c.graphql("q")
+    assert data == {"u0": None} and errors[0]["type"] == "NOT_FOUND"
+    c, _ = client([Resp(200, {"data": None, "errors": [{"type": "RATE_LIMITED"}]})])
+    with pytest.raises(RateLimitError):
+        c.graphql("q")
+
+
+def test_rate_limit_and_last_headers():
+    c, _ = client([Resp(200, {"resources": {"core": {"limit": 60, "remaining": 59}}}, headers={"X-OAuth-Scopes": "repo"})])
+    assert c.rate_limit()["core"]["remaining"] == 59
+    assert c.last_headers["X-OAuth-Scopes"] == "repo"

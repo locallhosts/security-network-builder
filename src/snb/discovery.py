@@ -5,9 +5,9 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Callable
 
-from config import Profile
-from github_api import GitHubClient, GitHubError, RateLimitError
-from models import Candidate
+from .config import Profile
+from .github_api import GitHubClient, GitHubError, RateLimitError
+from .models import Candidate
 
 log = logging.getLogger(__name__)
 

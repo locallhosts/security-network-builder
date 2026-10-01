@@ -1,4 +1,4 @@
-"""Small GitHub REST client: public data only, rate-limit aware, read-only."""
+"""GitHub client (REST + GraphQL transport): public data only, rate-limit aware, read-only."""
 from __future__ import annotations
 
 import logging
@@ -22,6 +22,11 @@ class NotFoundError(GitHubError):
 
 class RateLimitError(GitHubError):
     pass
+
+
+def is_bot(user: dict[str, Any]) -> bool:
+    login = user.get("login", "")
+    return user.get("type") == "Bot" or login.endswith("[bot]")
 
 
 class GitHubClient:
@@ -48,6 +53,7 @@ class GitHubClient:
         self.max_wait = max_wait
         self._sleep = sleep
         self._last_search = 0.0
+        self.last_headers: dict[str, str] = {}
 
     # -- internals -----------------------------------------------------
     @staticmethod
@@ -71,12 +77,18 @@ class GitHubClient:
             return max(0.0, float(reset) - time.time()) + 1
         return 60.0
 
-    def _request(self, path: str, params: dict[str, Any] | None = None) -> Any:
+    def _request(self, path: str, params: dict[str, Any] | None = None, json_body: dict[str, Any] | None = None) -> Any:
         url = f"{API}{path}"
         for attempt in range(self.max_retries + 1):
-            resp = self.session.get(url, params=params, timeout=30)
+            if json_body is not None:
+                resp = self.session.post(url, json=json_body, timeout=30)
+            else:
+                resp = self.session.get(url, params=params, timeout=30)
             if resp.status_code == 200:
+                self.last_headers = dict(resp.headers)
                 return resp.json()
+            if resp.status_code == 204:  # e.g. contributors of an empty repo
+                return []
             if resp.status_code == 404:
                 raise NotFoundError(path)
             if self._is_rate_limited(resp):
@@ -100,7 +112,7 @@ class GitHubClient:
             self._sleep(interval - elapsed)
         self._last_search = time.monotonic()
 
-    # -- public API ----------------------------------------------------
+    # -- REST ----------------------------------------------------------
     def search_repositories(self, query: str, per_page: int = 30, sort: str = "stars") -> list[dict[str, Any]]:
         self._throttle_search()
         data = self._request(
@@ -123,3 +135,36 @@ class GitHubClient:
             return self._request(f"/users/{login}")
         except NotFoundError:
             return {}
+
+    def rate_limit(self) -> dict[str, Any]:
+        """Remaining quota per API. This endpoint does not count against your limits."""
+        return self._request("/rate_limit").get("resources", {})
+
+    def list_user_orgs(self, login: str) -> list[str]:
+        try:
+            return [o["login"] for o in self._request(f"/users/{login}/orgs", {"per_page": 30})]
+        except NotFoundError:
+            return []
+
+    def list_contributors(self, full_name: str, limit: int = 30) -> list[dict[str, Any]]:
+        """Human contributors of a repo, most active first. Empty on failure (huge repos return 403)."""
+        try:
+            data = self._request(f"/repos/{full_name}/contributors", {"per_page": min(limit, 100)})
+        except RateLimitError:
+            raise
+        except GitHubError:
+            return []
+        return [c for c in data if not is_bot(c)]
+
+    # -- GraphQL -------------------------------------------------------
+    def graphql(self, query: str, variables: dict[str, Any] | None = None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        """Run a read-only query. Returns (data, errors); partial data is allowed."""
+        if not self.token:
+            raise GitHubError("the GraphQL API requires GITHUB_TOKEN")
+        payload = self._request("/graphql", json_body={"query": query, "variables": variables or {}})
+        errors = payload.get("errors") or []
+        if any(e.get("type") == "RATE_LIMITED" for e in errors):
+            raise RateLimitError("GraphQL rate limit exceeded")
+        if payload.get("data") is None:
+            raise GitHubError(f"GraphQL error: {errors[:1]}")
+        return payload["data"], errors

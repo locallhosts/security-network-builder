@@ -1,5 +1,5 @@
 import pytest
-from config import Profile, compile_keyword, normalize
+from snb.config import Profile, compile_keyword, normalize
 
 
 def test_normalize_separators():

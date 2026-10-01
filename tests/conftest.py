@@ -1,5 +1,5 @@
 import pytest
-from config import Profile
+from snb.config import Profile
 
 PROFILE = {
     "name": "Test",

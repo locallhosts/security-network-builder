@@ -9,8 +9,9 @@ import math
 from datetime import datetime, timezone
 from typing import Any
 
-from config import Profile
-from models import Recommendation
+from .config import Profile
+from .models import Recommendation
+from .reputation import compute_reputation
 
 EXTRA_REPO_POINTS = 1.0   # per additional matching repo in the same domain
 EXTRA_REPO_CAP = 3        # ...up to this many extra repos
@@ -33,8 +34,12 @@ def score_candidate(
     repos: list[dict[str, Any]],
     profile: Profile,
     now: datetime | None = None,
+    stats: dict[str, Any] | None = None,
 ) -> Recommendation | None:
-    """Score one engineer from their public repos. Returns None if nothing matches."""
+    """Score one engineer from their public repos. Returns None if nothing matches.
+
+    `stats` (optional, from GraphQL) adds the reputation component.
+    """
     now = now or datetime.now(timezone.utc)
     s = profile.settings
 
@@ -91,7 +96,7 @@ def score_candidate(
         evidence.append(f"Builds security tooling in {', '.join(sorted(langs))}")
 
     top_repos = sorted(matched.values(), key=lambda r: r.get("stargazers_count", 0), reverse=True)[:5]
-    return Recommendation(
+    rec = Recommendation(
         login=login,
         url=f"https://github.com/{login}",
         score=round(sum(breakdown.values()), 1),
@@ -109,3 +114,18 @@ def score_candidate(
             for r in top_repos
         ],
     )
+    if stats:
+        apply_reputation(rec, stats, now)
+    return rec
+
+
+def apply_reputation(rec: Recommendation, stats: dict[str, Any], now: datetime | None = None) -> None:
+    """Add (or refresh) the reputation component. Safe to call more than once."""
+    points, line = compute_reputation(stats, now)
+    rec.stats = {**rec.stats, **stats}
+    rec.evidence = [e for e in rec.evidence if not e.startswith("Reputation:")]
+    rec.breakdown.pop("Reputation", None)
+    if points:
+        rec.breakdown["Reputation"] = points
+        rec.evidence.append(line)
+    rec.score = round(sum(rec.breakdown.values()), 1)

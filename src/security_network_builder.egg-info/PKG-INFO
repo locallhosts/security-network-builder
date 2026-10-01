@@ -1,0 +1,402 @@
+Metadata-Version: 2.4
+Name: security-network-builder
+Version: 1.0.0
+Summary: Discover, analyze and rank security engineers on GitHub by technical domain.
+License: MIT
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests>=2.31
+Requires-Dist: PyYAML>=6.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Dynamic: license-file
+
+# Security Network Builder
+
+> A security engineering intelligence platform for discovering, analyzing, and connecting with engineers working in similar cybersecurity domains.
+
+**Security Engineer Discovery and Intelligence Platform**
+
+---
+
+## Overview
+
+Security Network Builder automates the discovery and ranking of engineers on GitHub based on their security specialization, so you can find relevant peers, maintainers, and collaborators without hours of manual searching.
+
+**What problem does this solve?**
+Finding relevant security engineers manually is time consuming. Follower counts and stars measure popularity, not expertise.
+
+**Why was it built?**
+GitHub contains valuable technical signals that are rarely used for discovery:
+
+- repositories
+- commits
+- topics
+- contributions
+- technical domains
+
+This project turns those signals into a ranked, explainable list of engineers.
+
+**Who is it for?**
+
+- Security engineers who want a technically aligned professional network
+- Detection, cloud, and runtime security practitioners looking for collaborators
+- Open source contributors searching for maintainers in a specific domain
+- Recruiters and community builders mapping security engineering ecosystems
+
+---
+
+## Problem Statement
+
+Security professionals often want to build meaningful technical networks, but traditional follower discovery is based on popularity rather than expertise.
+
+This project focuses on:
+
+- technical alignment
+- engineering contribution
+- security specialization
+- active development
+
+---
+
+## Goals
+
+### Primary Goals
+
+- Discover security engineers from GitHub
+- Identify engineers by technical domain
+- Rank candidates using security relevance
+- Provide explainable recommendations
+
+### Non Goals
+
+- Not a follower farming tool
+- Not a mass follow bot
+- Not a social scraping system
+- Not intended to spam users
+
+---
+
+## Architecture
+
+```
+Security Profile
+       |
+       v
+GitHub Discovery Engine
+       |
+       v
+Repository Analysis
+       |
+       v
+Engineer Scoring Engine
+       |
+       v
+Recommendation Report
+```
+
+*(Detailed diagram to be added.)*
+
+---
+
+## Security Domains
+
+### Detection Engineering
+
+Technologies: Sigma, YARA, SIEM, SOAR, MITRE ATT&CK
+
+### Linux / eBPF Security
+
+Technologies: eBPF, kernel security, runtime security, Falco
+
+### Cloud Security
+
+Technologies: AWS, Kubernetes, Terraform, DevSecOps
+
+### Identity and Zero Trust
+
+Technologies: SPIFFE/SPIRE, IAM, mTLS, workload identity
+
+### Application Security
+
+Technologies: OWASP, API Security, secure coding
+
+### Security Automation
+
+Technologies: Python, Go, security tooling
+
+---
+
+## How It Works
+
+### 1. Discovery
+
+Searches GitHub for:
+
+- security repositories
+- maintainers
+- contributors
+- engineers
+
+### 2. Profile Analysis
+
+Analyzes:
+
+- repository names
+- descriptions
+- topics
+- programming languages
+- activity
+
+### 3. Scoring Engine
+
+Domain weights come from your profile:
+
+```
+Detection Engineering   +10
+eBPF Security           +10
+Cloud Security          +8
+Zero Trust              +9
+Security Automation     +7
+```
+
+Plus: +1 per additional matching repo in a domain (max +3), recent activity (+3 within 90 days, +1 within a year), log-scaled star traction (max +3, so popularity cannot dominate), +1 for preferred languages, and up to +6 reputation (see below). Every point appears in the report's score breakdown.
+
+### 4. Recommendation
+
+Produces an explainable report:
+
+```
+Engineer:  @username
+Score:     32
+
+Matched Areas:
+  ✓ eBPF
+  ✓ Linux Security
+  ✓ Runtime Security
+
+Evidence:
+  - Maintains security tooling
+  - Active commits
+  - Related repositories
+```
+
+---
+
+## Installation
+
+```bash
+git clone https://github.com/locallhosts/security-network-builder
+cd security-network-builder
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+snb doctor            # verifies token, rate limits, profile and paths
+```
+
+Requires Python 3.10+. This installs the `snb` command (also available as `python -m snb`). Without a `profiles/` folder in the current directory, `snb` uses the profile bundled with the package.
+
+---
+
+## Configuration
+
+**Environment variables**
+
+```bash
+cp .env.example .env      # then set GITHUB_TOKEN
+```
+
+A token with **no scopes** is enough (public data only). Without one the tool still runs, but anonymous GitHub limits are low (10 searches/min, 60 calls/hour).
+
+**Security profile**
+
+```
+profiles/security_profile.yaml
+```
+
+---
+
+## Usage
+
+```bash
+snb                                  # defaults
+snb --top 25 --min-score 15          # bigger, stricter report
+snb --queries-per-domain 1           # quick run, fewer API calls
+snb --profile profiles/mine.yaml     # your own profile
+snb --no-report                      # print only
+snb --expand 5                       # also analyse contributors of the top 5 engineers' repos
+snb --api rest                       # force REST (no token needed)
+snb --ai                             # LLM explanations (needs ANTHROPIC_API_KEY)
+
+snb dashboard                        # local web dashboard on http://127.0.0.1:8765
+snb doctor                           # check your setup (add --offline to skip network checks)
+snb history                          # list past runs
+snb history --diff                   # what changed vs the previous run
+snb history --login alice            # score trend for one engineer
+snb history --set alice reviewing --note "check eBPF repo"
+snb profile-suggest --github-user YOU   # propose a profile from your repos
+```
+
+Reports are written to `reports/` as Markdown and JSON.
+
+Example output:
+
+```
+Building security network...
+
+Searching:
+ebpf security
+
+Searching:
+sigma detection
+
+Recommended Engineers:
+
+@developer
+Score: 35
+Areas:
+  - eBPF
+  - Detection Engineering
+```
+
+---
+
+## Project Structure
+
+```
+security-network-builder/
+├── src/snb/
+│   ├── main.py            # CLI, pipeline, command dispatch
+│   ├── doctor.py          # pre-flight checks
+│   ├── config.py          # profile loading (with bundled fallback), keyword matching
+│   ├── github_api.py      # read-only REST + GraphQL transport, rate-limit handling
+│   ├── graphql_api.py     # batched GraphQL fetch, normalised to REST shapes
+│   ├── discovery.py       # profile -> GitHub searches -> candidate engineers
+│   ├── scoring.py         # explainable scoring engine
+│   ├── reputation.py      # capped, hard-to-game reputation signals
+│   ├── graph.py           # relationship graph, centrality, communities
+│   ├── orgs.py            # organization analysis
+│   ├── history.py         # SQLite run history, triage notes, run diff
+│   ├── explain.py         # template + optional LLM explanations
+│   ├── profile_builder.py # profile suggestion from your own repos
+│   ├── dashboard.py       # hardened local HTTP server
+│   ├── dashboard_page.py  # single-page UI (no external resources)
+│   ├── default_profile.yaml
+│   ├── models.py
+│   └── report.py
+├── profiles/
+│   └── security_profile.yaml   # your editable copy
+├── tests/
+│   ├── test_*.py          # offline pytest suite
+│   └── web/               # jsdom DOM test for the dashboard
+├── .github/               # CI workflow, Dependabot
+├── pyproject.toml
+├── .env.example
+└── README.md
+```
+
+---
+
+## Roadmap
+
+### Phase 1: done
+- [x] GitHub discovery
+- [x] Security profile matching
+- [x] Ranking system
+
+### Phase 2: done
+- [x] GitHub GraphQL integration (`graphql_api.py`, batches 10 engineers per request)
+- [x] Contributor graph analysis (`--expand N`, `graph.py`)
+- [x] Organization analysis (`orgs.py`)
+- [x] Better reputation scoring (`reputation.py`)
+
+### Phase 3: done
+- [x] Web dashboard (`snb dashboard`)
+- [x] Engineer relationship graph (edges + communities + centrality)
+- [x] Recommendation history (SQLite, `history.py`)
+
+### Phase 4: done
+- [x] AI-assisted security profile analysis (`profile-suggest`)
+- [x] Natural language explanations (offline templates + optional LLM)
+
+### Phase 5: done
+- [x] `snb doctor` pre-flight checks
+- [x] Packaging: `pyproject.toml`, `snb` command, bundled default profile
+- [x] CI: tests on Python 3.10-3.12, dashboard DOM tests, wheel smoke test
+- [x] Run-to-run diff in the CLI and the dashboard
+
+---
+
+## Phase 2-4 Features
+
+**GraphQL mode.** With a `GITHUB_TOKEN`, one request returns repos, org memberships and contribution stats for up to 10 engineers (vs. 2-3 REST calls each). Without a token the tool falls back to REST automatically. Force a mode with `--api rest|graphql`.
+
+**Reputation (max +6).** Followers are only one capped component (max +2). The rest is contribution volume over the last year (+1/+2), code-review activity (+1) and account tenure (+1), which are harder to inflate than follower counts.
+
+**Contributor graph.** `--expand N` fetches contributors of the top N engineers' repos and scores them too, tagging them as found "via" that repo. Edges between engineers are co-contribution (weight 4), shared org (3 per org) and 2+ overlapping domains (1 per domain). Output includes weighted-degree centrality and deterministic community detection.
+
+**Organizations.** Public org memberships are grouped to show which orgs concentrate the engineers you found.
+
+**History and triage.** Every run is saved to `data/history.db` (SQLite). Engineers not seen in earlier runs are flagged *new*. You can mark people `reviewing`, `connected` or `ignored` (with a note) from the dashboard or `snb history --set LOGIN STATUS`. This is only your notebook: nothing is ever sent to GitHub, and `ignored` engineers are skipped in future runs (`--include-ignored` to override).
+
+**Dashboard.** `snb dashboard` serves a local page (127.0.0.1 only) with the ranking, an interactive relationship graph, organizations, score breakdowns, per-engineer history and triage controls.
+
+**Doctor.** `snb doctor` checks the Python version, profile validity, whether history and report folders are writable, token validity, remaining quota for each GitHub API, GraphQL access, and whether your token has broader scopes than this read-only tool needs. It exits non-zero on failure, so it works in scripts.
+
+**Run diff.** `snb history --diff` (and the dashboard's *Changes since previous run* panel) shows new engineers, dropped engineers and big score movers between runs.
+
+**Explanations.** Every recommendation gets an offline, deterministic explanation. With `--ai` and `ANTHROPIC_API_KEY`, an LLM writes it instead, from public repo metadata and computed scores only.
+
+**Profile suggestion.** `snb profile-suggest --github-user YOU` reads your own public repos and proposes weights, extra keywords (from your own topics) and preferred languages. `--ai` adds LLM refinement, validated against the same schema as hand-written profiles.
+
+---
+
+## Testing
+
+```bash
+python -m pytest                       # offline unit + integration tests
+npm ci --prefix tests/web              # one-time: installs jsdom
+python -m pytest tests/test_dashboard_dom.py
+```
+
+The suite runs offline against fake GitHub responses. The DOM test starts a real dashboard server seeded with hostile data (script tags, `javascript:` URLs, event-handler payloads) and drives the page in jsdom to confirm nothing executes. jsdom is a DOM implementation, not a browser: it does not enforce CSP or render CSS. The DOM test is skipped automatically if Node or jsdom is missing.
+
+CI (`.github/workflows/ci.yml`) runs the tests on Python 3.10-3.12, the DOM test, and builds and smoke-tests the wheel in a clean virtualenv.
+
+---
+
+## Security Considerations
+
+- The GitHub client is read-only: the tool never follows, stars, or messages anyone
+
+- GitHub tokens are stored locally
+- API rate limits are respected
+- No private repository access required
+- No credentials collected
+- No automated interaction without user approval
+- The dashboard binds to 127.0.0.1 only, checks the Host header (DNS-rebinding defence), requires a per-launch CSRF token for writes, and sends a strict CSP. GitHub-sourced text is rendered with `textContent` only, never as HTML
+- History and triage notes stay in a local SQLite file; nothing is uploaded
+- `--ai` is opt-in. It sends only public repo metadata and computed scores to the Anthropic API, and instructs the model to treat GitHub text as untrusted data
+
+---
+
+## Technologies
+
+- Python 3.10+
+- GitHub REST and GraphQL APIs
+- SQLite (stdlib)
+- `http.server` + vanilla JS/SVG dashboard (no frameworks, no CDN)
+- Anthropic Messages API (optional)
+- JSON / YAML
+
+---
+
+## Why This Project Exists
+
+I built this project to explore how security engineering communities can be discovered through technical signals rather than popularity metrics.
+
+---
+
+## License
+
+MIT License

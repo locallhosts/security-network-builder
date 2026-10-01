@@ -1,8 +1,17 @@
-.env
 .DS_Store
+
+# Python
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Environment
+.env
 .venv/
-reports/*
-!reports/.gitkeep
+
+# Reports
+reports/*.json
+reports/*.md
+!reports/example_report.json
+!reports/example_report.md
+reports/.gitkeep

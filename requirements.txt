@@ -1,3 +1,4 @@
+# Convenience for non-packaged use. Preferred: pip install -e ".[dev]"
 requests>=2.31
 PyYAML>=6.0
 pytest>=7.0

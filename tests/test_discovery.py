@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from conftest import repo
-from discovery import build_query, discover
+from snb.discovery import build_query, discover
 
 
 class FakeClient:

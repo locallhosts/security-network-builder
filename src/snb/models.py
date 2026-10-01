@@ -13,6 +13,7 @@ class Candidate:
     html_url: str
     seed_repos: list[dict[str, Any]] = field(default_factory=list)
     queries: set[str] = field(default_factory=set)
+    via: str = ""  # e.g. "contributor of owner/repo" when found by graph expansion
 
     @property
     def seed_weight(self) -> int:
@@ -32,6 +33,14 @@ class Recommendation:
     evidence: list[str]
     matched_repos: list[dict[str, Any]]
     profile: dict[str, Any] = field(default_factory=dict)
+    stats: dict[str, Any] = field(default_factory=dict)   # followers, contributions, ...
+    orgs: list[str] = field(default_factory=list)
+    community: int | None = None
+    centrality: float = 0.0
+    explanation: str = ""
+    status: str = ""        # your own triage state: reviewing / connected / ignored
+    is_new: bool = False    # not seen in any previous run
+    via: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

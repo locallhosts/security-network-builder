@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import re
+from importlib import resources
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,18 @@ def load_env(path: str = ".env") -> None:
             continue
         key, value = line.split("=", 1)
         os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+LOCAL_PROFILE = Path("profiles/security_profile.yaml")
+
+
+def read_profile_text(path: str | Path | None = None) -> str:
+    """Explicit path > ./profiles/security_profile.yaml > the profile bundled with the package."""
+    if path:
+        return Path(path).read_text(encoding="utf-8")
+    if LOCAL_PROFILE.is_file():
+        return LOCAL_PROFILE.read_text(encoding="utf-8")
+    return resources.files("snb").joinpath("default_profile.yaml").read_text(encoding="utf-8")
 
 
 def normalize(text: str | None) -> str:
@@ -102,9 +115,8 @@ class Profile:
         )
 
     @classmethod
-    def load(cls, path: str | Path) -> "Profile":
-        with open(path, "r", encoding="utf-8") as fh:
-            return cls.from_dict(yaml.safe_load(fh) or {})
+    def load(cls, path: str | Path | None = None) -> "Profile":
+        return cls.from_dict(yaml.safe_load(read_profile_text(path)) or {})
 
     def match_repo(self, repo: dict[str, Any]) -> dict[str, set[str]]:
         """Return {domain_key: matched_keywords} for one repository."""

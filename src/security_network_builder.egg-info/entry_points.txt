@@ -1,0 +1,2 @@
+[console_scripts]
+snb = snb.main:main

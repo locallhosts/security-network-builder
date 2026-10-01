@@ -1,0 +1,50 @@
+name: Security Engineer
+github_username: locallhosts     
+
+settings:
+  min_stars: 5               # minimum stars on a seed repository
+  active_within_days: 365    # seed repos must have been pushed to recently
+  results_per_query: 30      # repos fetched per search query (max 100)
+  max_candidates: 30         # engineers analysed in depth per run
+  max_repos_per_user: 100    # repos inspected per engineer
+  users_only: true           # skip organisations
+  include_forks: false
+  preferred_languages: [Python, Go, Rust, Java]
+  exclude_users: []
+
+domains:
+  detection_engineering:
+    label: Detection Engineering
+    weight: 10
+    keywords: [sigma, yara, siem, soar, mitre attack, detection engineering, threat detection, detection rules, threat hunting]
+    search_queries: ["sigma detection", "yara rules", "detection engineering", "threat hunting"]
+
+  ebpf_linux_security:
+    label: Linux / eBPF Security
+    weight: 10
+    keywords: [ebpf, kernel security, runtime security, falco, tetragon, seccomp, lsm]
+    search_queries: ["ebpf security", "runtime security", "topic:ebpf"]
+
+  cloud_security:
+    label: Cloud Security
+    weight: 8
+    keywords: [aws security, kubernetes security, terraform security, devsecops, cspm, cloud security, iac security]
+    search_queries: ["cloud security", "kubernetes security", "devsecops"]
+
+  identity_zero_trust:
+    label: Identity and Zero Trust
+    weight: 9
+    keywords: [spiffe, spire, iam, mtls, workload identity, zero trust]
+    search_queries: ["spiffe spire", "zero trust", "workload identity"]
+
+  application_security:
+    label: Application Security
+    weight: 7
+    keywords: [owasp, api security, secure coding, sast, dast, appsec]
+    search_queries: ["owasp", "api security", "appsec"]
+
+  security_automation:
+    label: Security Automation
+    weight: 7
+    keywords: [security automation, security tooling, security scanner, vulnerability scanner, security orchestration]
+    search_queries: ["security automation", "security tooling"]

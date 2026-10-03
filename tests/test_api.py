@@ -254,3 +254,52 @@ def test_public_web_ui_exposes_secure_search_controls():
     assert 'id="next"' in response.text
     assert "createElementNS" in response.text
     assert "innerHTML" not in response.text
+
+
+def test_public_engineer_profile_is_sanitized_and_public(monkeypatch):
+    monkeypatch.setattr(
+        "snb.api.app.GitHubClient.get_user",
+        lambda self, login: {
+            "login": login,
+            "name": "<script>ignored</script>",
+            "bio": "security engineer",
+            "company": "Example",
+            "followers": "7",
+            "public_repos": 4,
+            "created_at": "2020-01-01T00:00:00Z",
+            "html_url": "https://github.com/alice",
+            "email": "private@example.com",
+        },
+    )
+    monkeypatch.setattr(
+        "snb.api.app.GitHubClient.list_user_repos",
+        lambda self, login, limit=100: [
+            {
+                "name": "secure-tool",
+                "description": "runtime security",
+                "stargazers_count": "5",
+                "language": "Go",
+                "html_url": "https://github.com/alice/secure-tool",
+            }
+        ],
+    )
+    response = TestClient(app).get("/api/public/engineers/alice")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["login"] == "alice"
+    assert data["followers"] == 7
+    assert data["repositories"][0]["stars"] == 5
+    assert "email" not in data
+    assert data["repositories"][0]["url"] == "https://github.com/alice/secure-tool"
+
+
+def test_public_engineer_profile_rejects_invalid_login():
+    response = TestClient(app).get("/api/public/engineers/not valid!")
+    assert response.status_code == 422
+
+
+def test_public_engineer_profile_returns_404_for_unknown_user(monkeypatch):
+    monkeypatch.setattr("snb.api.app.GitHubClient.get_user", lambda self, login: {})
+    response = TestClient(app).get("/api/public/engineers/ghost")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "engineer not found"

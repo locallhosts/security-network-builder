@@ -127,3 +127,41 @@ def explain_all(recs: list[Recommendation], llm: LLM | None = None) -> None:
             except LLMError as exc:
                 log.warning("LLM explanation failed (%s); using template for the rest", exc)
                 use_llm = False  # don't hammer a failing endpoint
+
+
+class OpenAILLM:
+    """Minimal OpenAI-compatible explanation client using the existing requests dependency."""
+    def __init__(self, api_key: str, model: str | None = None, session: requests.Session | None = None) -> None:
+        self.api_key = api_key
+        self.model = model or os.environ.get("OPENAI_MODEL") or "gpt-5"
+        self.session = session or requests.Session()
+
+    @classmethod
+    def from_env(cls) -> "OpenAILLM | None":
+        key = os.environ.get("OPENAI_API_KEY")
+        return cls(key) if key else None
+
+    def explain(self, rec: Recommendation) -> str:
+        payload = _escape(_payload(rec))
+        try:
+            resp = self.session.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {self.api_key}", "content-type": "application/json"},
+                json={
+                    "model": self.model,
+                    "messages": [
+                        {"role": "system", "content": _SYSTEM},
+                        {"role": "user", "content": f"<data>\\n{payload}\\n</data>"},
+                    ],
+                },
+                timeout=60,
+            )
+        except requests.RequestException as exc:
+            raise LLMError(str(exc)) from exc
+        if resp.status_code != 200:
+            raise LLMError(f"{resp.status_code}: {resp.text[:200]}")
+        data = resp.json()
+        raw = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if not isinstance(raw, str) or not raw.strip():
+            raise LLMError("empty response")
+        return raw.strip()

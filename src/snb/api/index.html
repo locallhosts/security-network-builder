@@ -68,7 +68,7 @@ footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
 </section>
 
 <section class="panel" id="profile-card" hidden>
-<div class="panel-head"><div><h2 id="profile-title">Engineer profile</h2><div class="muted">Public GitHub data and recent engineering evidence.</div></div><button class="btn" id="close-profile" type="button">Close</button></div>
+<div class="panel-head"><div><h2 id="profile-title">Engineer profile</h2><div class="muted">Public GitHub data and recent engineering evidence.</div></div><div class="actions"><button class="btn" id="export-profile" type="button" disabled>Export profile JSON</button><button class="btn" id="close-profile" type="button">Close</button></div></div>
 <div id="profile" class="profile"></div>
 </section>
 
@@ -88,7 +88,7 @@ footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
 <footer class="shell">Security Network Builder · public, read-only GitHub discovery · GitHub content is treated as untrusted input.</footer>
 
 <script>
-const state={mode:"repos",query:"",page:1,limit:12,results:[],sort:"stars"};
+const state={mode:"repos",query:"",page:1,limit:12,results:[],sort:"stars",profile:null};
 let graphState={nodes:[],edges:[],communities:[]}, view={scale:1,tx:0,ty:0}, selectedNode=null;
 const $=s=>document.querySelector(s);
 function clear(el){while(el.firstChild)el.removeChild(el.firstChild)}
@@ -153,7 +153,7 @@ async function page(delta){
 async function loadEngineer(login){
  const card=$("#profile-card"),box=$("#profile");card.hidden=false;clear(box);box.appendChild(el("div",{class:"empty"},"Loading @"+login+"…"));card.scrollIntoView({behavior:"smooth",block:"start"});
  try{
-  const d=await getJson("/api/public/engineers/"+encodeURIComponent(login));clear(box);$("#profile-title").textContent="Engineer · @"+d.login;
+  const d=await getJson("/api/public/engineers/"+encodeURIComponent(login));state.profile=d;$("#export-profile").disabled=false;clear(box);$("#profile-title").textContent="Engineer · @"+d.login;
   const left=el("div"),right=el("div");
   const head=el("div",{class:"result-top"},el("div",{},el("h3",{},d.name||("@"+d.login)),el("div",{class:"meta"},"@"+d.login+" · "+Number(d.followers||0).toLocaleString()+" followers · "+Number(d.public_repos||0).toLocaleString()+" public repositories")),githubLink(d.url,"GitHub profile")||"");
   left.appendChild(head);left.appendChild(el("p",{class:"muted"},d.bio||"No public bio."));
@@ -166,7 +166,7 @@ async function loadEngineer(login){
   left.appendChild(el("h3",{},"Recent activity"));left.appendChild(el("ul",{class:"fallback"},(d.activity||[]).slice(0,10).map(a=>el("li",{},a.repository+(a.pushed_at?" · "+a.pushed_at:"")+(a.language?" · "+a.language:"")))));
   right.appendChild(el("h3",{},"Repository health signals"));const list=el("div",{class:"repo-list"});(d.repository_signals||[]).slice(0,12).forEach(r=>{const repo=(d.repositories||[]).find(x=>x.name===r.name);list.appendChild(el("div",{class:"repo-mini"},el("strong",{},githubLink(repo?.url,r.name)||r.name),el("span",{class:"meta"},"★ "+Number(r.stars||0)+" · forks "+Number(r.forks||0)+" · "+r.maintenance),el("div",{class:"muted"},(r.security_domains||[]).join(" · ")||"No configured security-domain match"))) });right.appendChild(list);
   box.appendChild(el("div",{class:"profile-grid"},left,right));
- }catch(e){clear(box);box.appendChild(el("div",{class:"empty"},e.message))}
+ }catch(e){state.profile=null;$("#export-profile").disabled=true;clear(box);box.appendChild(el("div",{class:"empty"},e.message))}
 }
 
 document.querySelectorAll(".tab").forEach(tab=>tab.addEventListener("click",()=>{
@@ -175,6 +175,7 @@ document.querySelectorAll(".tab").forEach(tab=>tab.addEventListener("click",()=>
 $("#repo-form").addEventListener("submit",e=>{e.preventDefault();search()});$("#user-form").addEventListener("submit",e=>{e.preventDefault();search()});$("#prev").addEventListener("click",()=>page(-1));$("#next").addEventListener("click",()=>page(1));$("#close-profile").addEventListener("click",()=>$("#profile-card").hidden=true);
 
 $("#export-json").addEventListener("click",()=>{if(state.results.length)download(state.mode==="repos"?"snb-repositories.json":"snb-engineers.json",JSON.stringify(state.results,null,2),"application/json")});
+$("#export-profile").addEventListener("click",()=>{if(state.profile)download("snb-engineer-"+state.profile.login+".json",JSON.stringify(state.profile,null,2),"application/json")});
 $("#export-results").addEventListener("click",()=>{
  if(!state.results.length)return;
  if(state.mode==="repos")download("snb-repositories.csv",csv(state.results.map(x=>({repository:x.repository,owner:x.owner,stars:x.stars,language:x.language,url:x.url,description:x.description}))),"text/csv");

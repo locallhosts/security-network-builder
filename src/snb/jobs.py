@@ -112,7 +112,7 @@ class JobQueue:
             )
         return self.get(job_id)
 
-    def run_once(self, handlers: dict[str, Callable[[dict[str, Any]], None]]) -> Job | None:
+    def run_once(self, handlers: dict[str, Callable[[dict[str, Any]], str | None]]) -> Job | None:
         job = self.claim()
         if not job:
             return None
@@ -120,7 +120,18 @@ class JobQueue:
         if handler is None:
             return self.fail(job.id, f"no handler for job kind {job.kind}", retry_delay=0)
         try:
-            handler(job.payload)
+            result = handler(job.payload)
         except Exception as exc:
             return self.fail(job.id, str(exc))
-        return self.succeed(job.id)
+        return self.succeed(job.id, "" if result is None else str(result))
+
+    def run(self, handlers: dict[str, Callable[[dict[str, Any]], str | None]], *, max_jobs: int = 1) -> list[Job]:
+        if not 1 <= max_jobs <= 100:
+            raise ValueError("max_jobs must be between 1 and 100")
+        results: list[Job] = []
+        for _ in range(max_jobs):
+            job = self.run_once(handlers)
+            if job is None:
+                break
+            results.append(job)
+        return results

@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from ..config import Profile
 from ..github_api import GitHubClient, GitHubError
 from ..history import History
+from ..jobs import JobQueue
 from ..scoring import score_candidate
 
 app = FastAPI(
@@ -38,6 +39,7 @@ class APISettings:
     github_token: str | None
     api_key: str | None
     allowed_hosts: tuple[str, ...]
+    jobs_db: str
 
 
 def load_settings() -> APISettings:
@@ -51,6 +53,7 @@ def load_settings() -> APISettings:
         github_token=os.environ.get("GITHUB_TOKEN") or None,
         api_key=os.environ.get("API_KEY") or None,
         allowed_hosts=allowed_hosts or ("*",),
+        jobs_db=os.environ.get("SNB_JOBS_DB", "data/jobs.db"),
     )
 
 
@@ -96,6 +99,15 @@ class PublicRepository(BaseModel):
     url: str | None
 
 
+class JobResponse(BaseModel):
+    id: str
+    kind: str
+    status: str
+    attempts: int = Field(ge=0)
+    max_attempts: int = Field(ge=1)
+    last_error: str
+
+
 class PublicEngineerProfile(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -138,6 +150,10 @@ _search_hits: dict[str, deque[float]] = defaultdict(deque)
 
 def get_history() -> History:
     return History(load_settings().history_db)
+
+
+def get_jobs() -> JobQueue:
+    return JobQueue(load_settings().jobs_db)
 
 
 def require_api_key(value: str | None) -> None:
@@ -216,6 +232,34 @@ def search(
             }
         )
     return SearchResponse(query=q, page=page, limit=limit, results=results)
+
+
+@app.post("/api/jobs", response_model=JobResponse, status_code=202, tags=["private"])
+def enqueue_job(
+    kind: str = Query(..., min_length=1, max_length=100),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    x_api_key: str | None = Header(default=None),
+) -> JobResponse:
+    require_api_key(x_api_key)
+    if kind not in {"discovery", "intelligence"}:
+        raise HTTPException(status_code=422, detail="unsupported job kind")
+    try:
+        job = get_jobs().enqueue(kind, {}, idempotency_key=idempotency_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JobResponse(id=job.id, kind=job.kind, status=job.status, attempts=job.attempts,
+                       max_attempts=job.max_attempts, last_error=job.last_error)
+
+
+@app.get("/api/jobs/{job_id}", response_model=JobResponse, tags=["private"])
+def job_status(job_id: str, x_api_key: str | None = Header(default=None)) -> JobResponse:
+    require_api_key(x_api_key)
+    try:
+        job = get_jobs().get(job_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="job not found") from exc
+    return JobResponse(id=job.id, kind=job.kind, status=job.status, attempts=job.attempts,
+                       max_attempts=job.max_attempts, last_error=job.last_error)
 
 
 @app.get("/api/runs", tags=["private"])

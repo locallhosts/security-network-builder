@@ -310,3 +310,13 @@ def test_public_engineer_profile_returns_404_for_unknown_user(monkeypatch):
     response = TestClient(app).get("/api/public/engineers/ghost")
     assert response.status_code == 404
     assert response.json()["detail"] == "engineer not found"
+
+
+def test_public_web_ui_exposes_profile_and_graph_controls():
+    response = TestClient(app).get("/")
+    assert response.status_code == 200
+    assert 'id="community"' in response.text
+    assert 'id="centrality"' in response.text
+    assert 'id="apply-graph"' in response.text
+    assert "loadEngineer(n.login)" in response.text
+    assert "Relationship details" in response.text

@@ -78,11 +78,11 @@ footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
 <label class="field">Community<select id="community"><option value="">All communities</option></select></label>
 <label class="field">Min centrality<input id="centrality" type="number" min="0" max="1" step=".05" value="0"></label>
 <label class="field">Find node<input id="node-filter" type="search" placeholder="@login"></label>
-<button class="btn" id="apply-graph" type="button">Apply</button><button class="btn" id="reset-graph" type="button">Reset view</button>
+<button class="btn" id="apply-graph" type="button">Apply</button><button class="btn" id="zoom-out" type="button" aria-label="Zoom out">−</button><button class="btn" id="zoom-in" type="button" aria-label="Zoom in">+</button><button class="btn" id="reset-graph" type="button">Reset view</button>
 </div>
 <div class="status" id="graph-status" aria-live="polite"></div>
-<div class="graph-wrap"><svg id="graph-svg" viewBox="0 0 1200 650" role="img" aria-label="Interactive security community graph"></svg><div class="graph-hint">Scroll to zoom · drag nodes · click a node for profile</div></div>
-<div class="graph-bottom"><div class="data-box"><h3>Relationship details</h3><div id="edge-details" class="muted">Select a node to inspect its relationships.</div></div><div class="data-box"><h3>Accessible graph data</h3><ul id="graph-fallback" class="fallback"></ul></div></div>
+<div class="graph-wrap"><svg id="graph-svg" viewBox="0 0 1200 650" role="img" aria-label="Interactive security community graph"></svg><div class="graph-hint">Scroll to zoom · drag empty space to pan · drag nodes · click a node for profile</div></div>
+<div class="graph-bottom"><div class="data-box"><h3>Graph legend</h3><div class="chips"><span class="chip">Blue · community 0</span><span class="chip">Purple · community 1</span><span class="chip">Green · community 3</span><span class="chip">Node size · score</span><span class="chip">Edge width · relationship weight</span></div></div><div class="data-box"><h3>Relationship details</h3><div id="edge-details" class="muted">Select a node to inspect its relationships.</div></div><div class="data-box"><h3>Accessible graph data</h3><ul id="graph-fallback" class="fallback"></ul></div></div>
 </section>
 </main>
 <footer class="shell">Security Network Builder · public, read-only GitHub discovery · GitHub content is treated as untrusted input.</footer>
@@ -203,7 +203,7 @@ function drawGraph(){
  const svg=$("#graph-svg");clear(svg);const {nodes,edges}=graphFiltered();selectedNode=null;$("#edge-details").textContent="Select a node to inspect its relationships.";clear($("#graph-fallback"));
  if(!nodes.length){svg.appendChild(elNS("text",{x:30,y:45,fill:"#617087"},"No nodes match the current filters."));setGraphStatus("No matching nodes");return}
  const display=nodes.length>140?nodes.slice(0,140):nodes;const allowed=new Set(display.map(n=>n.login));const displayEdges=edges.filter(e=>allowed.has(e.a)&&allowed.has(e.b));const pos=layout(display,displayEdges);const ns="http://www.w3.org/2000/svg";
- const root=document.createElementNS(ns,"g");root.setAttribute("transform","translate(0 0)");svg.appendChild(root);
+ const root=document.createElementNS(ns,"g");root.setAttribute("transform",`translate(${view.tx} ${view.ty}) scale(${view.scale})`);svg.appendChild(root);
  displayEdges.forEach(e=>{const a=pos[e.a],b=pos[e.b],line=document.createElementNS(ns,"line");line.setAttribute("x1",a.x);line.setAttribute("y1",a.y);line.setAttribute("x2",b.x);line.setAttribute("y2",b.y);line.setAttribute("stroke-width",String(Math.max(1,Math.min(8,Number(e.weight)||1))));line.setAttribute("class","edge");line.dataset.a=e.a;line.dataset.b=e.b;root.appendChild(line)});
  display.forEach(n=>{const p=pos[n.login],g=document.createElementNS(ns,"g");g.setAttribute("class","node");g.dataset.login=n.login;const circle=document.createElementNS(ns,"circle");circle.setAttribute("cx",p.x);circle.setAttribute("cy",p.y);circle.setAttribute("r",String(7+Math.min(18,Number(n.score||0)/4)));circle.setAttribute("fill",graphColor(n.community));g.appendChild(circle);const title=document.createElementNS(ns,"title");title.textContent="@"+n.login+" · score "+Number(n.score||0)+" · centrality "+Number(n.centrality||0);g.appendChild(title);const label=document.createElementNS(ns,"text");label.setAttribute("x",p.x+11);label.setAttribute("y",p.y+4);label.textContent="@"+n.login;g.appendChild(label);
  let drag=false;g.addEventListener("pointerdown",ev=>{drag=true;g.setPointerCapture(ev.pointerId);ev.stopPropagation()});g.addEventListener("pointermove",ev=>{if(!drag)return;const r=svg.getBoundingClientRect();const x=(ev.clientX-r.left)/r.width*1200,y=(ev.clientY-r.top)/r.height*650;circle.setAttribute("cx",x);circle.setAttribute("cy",y);label.setAttribute("x",x+11);label.setAttribute("y",y+4);displayEdges.forEach(e=>{if(e.a!==n.login&&e.b!==n.login)return;const l=root.querySelector('line[data-a="'+CSS.escape(e.a)+'"][data-b="'+CSS.escape(e.b)+'"]');if(l){const other=e.a===n.login?pos[e.b]:pos[e.a];l.setAttribute("x1",e.a===n.login?x:other.x);l.setAttribute("y1",e.a===n.login?y:other.y);l.setAttribute("x2",e.b===n.login?x:other.x);l.setAttribute("y2",e.b===n.login?y:other.y)}})});g.addEventListener("pointerup",()=>{if(drag){drag=false;showNode(n.login)}});g.addEventListener("click",()=>showNode(n.login));root.appendChild(g);
@@ -217,6 +217,14 @@ function showNode(login){
  const box=$("#edge-details");clear(box);box.appendChild(el("div",{},el("strong",{},"@"+login)," · score "+Number(node?.score||0)+" · centrality "+Number(node?.centrality||0)));if(!rels.length)box.appendChild(el("p",{class:"muted"},"No recorded relationships."));rels.slice(0,20).forEach(e=>box.appendChild(el("p",{class:"meta"},"@"+e.a+" ↔ @"+e.b+" · weight "+Number(e.weight||0)+" · "+(e.reasons||[]).join("; "))));
  loadEngineer(login)
 }
+function setGraphTransform(){const root=$("#graph-svg").firstElementChild;if(root)root.setAttribute("transform",`translate(${view.tx} ${view.ty}) scale(${view.scale})`)}
+function zoomGraph(factor){view.scale=Math.max(.45,Math.min(3,view.scale*factor));setGraphTransform()}
+$("#graph-svg").addEventListener("wheel",ev=>{ev.preventDefault();zoomGraph(ev.deltaY<0?1.12:.89)},{passive:false});
+let pan=null;
+$("#graph-svg").addEventListener("pointerdown",ev=>{if(ev.target.closest(".node"))return;pan={x:ev.clientX,y:ev.clientY,tx:view.tx,ty:view.ty};$("#graph-svg").setPointerCapture(ev.pointerId)});
+$("#graph-svg").addEventListener("pointermove",ev=>{if(!pan)return;const rect=$("#graph-svg").getBoundingClientRect();view.tx=pan.tx+(ev.clientX-pan.x)*1200/rect.width;view.ty=pan.ty+(ev.clientY-pan.y)*650/rect.height;setGraphTransform()});
+$("#graph-svg").addEventListener("pointerup",()=>{pan=null});
+$("#zoom-in").addEventListener("click",()=>zoomGraph(1.2));$("#zoom-out").addEventListener("click",()=>zoomGraph(.8333));
 $("#apply-graph").addEventListener("click",drawGraph);$("#reset-graph").addEventListener("click",()=>{$("#community").value="";$("#centrality").value="0";$("#node-filter").value="";view={scale:1,tx:0,ty:0};drawGraph()});
 $("#download-graph").addEventListener("click",()=>download("security-network-graph.json",JSON.stringify(graphState,null,2),"application/json"));
 $("#download-svg").addEventListener("click",()=>{const clone=$("#graph-svg").cloneNode(true);clone.setAttribute("xmlns","http://www.w3.org/2000/svg");download("security-network-graph.svg",new XMLSerializer().serializeToString(clone),"image/svg+xml")});

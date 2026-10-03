@@ -180,6 +180,10 @@ class PublicEngineerProfile(BaseModel):
     skills: list[str]
     contribution_trends: dict[str, int]
     repository_signals: list[dict[str, Any]]
+    score: float | None
+    matched_domains: list[str]
+    score_breakdown: dict[str, float]
+    evidence: list[str]
 
 
 def _nonnegative_int(value: Any) -> int:
@@ -598,6 +602,11 @@ def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
         )
 
     domains, skills, trends, repository_signals = _public_engineer_intelligence(repositories)
+    recommendation = score_candidate(login, repositories, Profile.load())
+    score = None if recommendation is None else recommendation.score
+    matched_domains = [] if recommendation is None else recommendation.matched_domains
+    score_breakdown = {} if recommendation is None else recommendation.breakdown
+    evidence = [] if recommendation is None else recommendation.evidence
     return PublicEngineerProfile(
         login=login,
         name=profile.get("name"),
@@ -614,6 +623,10 @@ def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
         skills=skills,
         contribution_trends=trends,
         repository_signals=repository_signals,
+        score=score,
+        matched_domains=matched_domains,
+        score_breakdown=score_breakdown,
+        evidence=evidence,
     )
 
 

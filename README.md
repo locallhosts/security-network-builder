@@ -60,6 +60,9 @@ GitHub holds strong signals of real engineering work: repositories, topics, lang
 This roadmap is the project's build sequence. **Do not deploy the production service until the implementation phases below are complete and the local test/Docker validation is green.** Keep this section updated as work progresses so the project history and remaining work are visible to contributors and users.
 
 ### Phase 1 — Foundation
+**Theme: Build the security-engineering core**
+
+Goal: establish discovery, scoring, relationships, persistence, reporting, and the local dashboard as a reliable foundation.
 
 - [x] Core discovery and scoring foundation
 - [x] Security profile and configurable domains
@@ -67,12 +70,141 @@ This roadmap is the project's build sequence. **Do not deploy the production ser
 - [x] Explainable scoring and relationship graph foundation
 - [x] Local history and reporting
 - [x] Local dashboard foundation
+- [x] Preflight/doctor checks
+- [x] Security and privacy baseline
+
+**Phase 1 exit criteria:** discovery, scoring, graph generation, local history, reporting, and dashboard functionality are implemented and covered by the local test suite.
 
 ### Phase 2 — API
+**Theme: Turn the foundation into a secure, testable service**
+
+Goal: expose the foundation through a stable FastAPI interface while protecting private data and validating public input.
 
 4. **FastAPI application**
+   - [~] Complete application/configuration boundary
+   - [x] Health endpoint
+   - [x] Root/public web response
+   - [x] OpenAPI metadata and interactive API documentation
+   - [x] Security middleware and response headers
+
 5. **API routes**
+   - [x] Public GitHub repository search
+   - [x] Public latest community graph
+   - [x] Protected run history
+   - [x] Protected latest run
+   - [x] Protected individual run lookup
+   - [x] Protected engineer history
+   - [x] Request validation and bounded parameters
+   - [x] API-key protection for private routes
+   - [x] Lightweight search rate limiting
+   - [x] Safe GitHub URL validation
+   - [x] Clear API error handling
+
 6. **API tests**
+   - [x] Health/root coverage
+   - [x] Search success and validation coverage
+   - [x] GitHub error handling coverage
+   - [x] Private-route authentication coverage
+   - [x] Run-not-found behavior
+   - [x] Empty/non-empty graph behavior
+   - [x] Security-header coverage
+   - [ ] Complete remaining API contract/regression coverage
+
+**Phase 2 exit criteria:** all API routes have a documented contract, private data is protected, public inputs are validated/rate-limited, and the complete API suite is green.
+
+### Phase 3 — Web Platform
+**Theme: Build the user-facing security intelligence platform**
+
+Goal: make the API useful through a professional web experience.
+
+7. **Search UI**
+   - [ ] Search engineers/repositories
+   - [ ] Filters and pagination
+   - [ ] Loading, empty, and error states
+   - [ ] Evidence-first result cards
+   - [ ] Secure rendering of GitHub content
+
+8. **Engineer profiles**
+   - [ ] Engineer profile page
+   - [ ] Score and domain breakdown
+   - [ ] Matching repositories and evidence
+   - [ ] Activity/history view
+   - [ ] Organization and relationship context
+
+9. **Graph visualization**
+   - [ ] Interactive relationship graph
+   - [ ] Node/edge filtering
+   - [ ] Community/domain views
+   - [ ] Relationship details
+   - [ ] Accessible non-graph fallback
+   - [ ] Larger-graph performance testing
+
+**Phase 3 exit criteria:** a user can search, inspect an engineer, and explore relationships through the web platform.
+
+### Phase 4 — Intelligence Layer
+**Theme: Add controlled AI and automated discovery**
+
+Goal: add optional intelligence without allowing untrusted GitHub content to control application behavior.
+
+10. **OpenAI integration**
+   - [ ] Provider interface
+   - [ ] Secure configuration and secret handling
+   - [ ] Prompt/input boundaries
+   - [ ] Output validation
+   - [ ] Offline fallback
+   - [ ] Provider failure tests
+
+11. **Anthropic integration**
+   - [ ] Same provider interface
+   - [ ] Secure configuration and secret handling
+   - [ ] Prompt/input boundaries
+   - [ ] Output validation
+   - [ ] Offline fallback
+   - [ ] Provider failure tests
+
+12. **Background discovery jobs**
+   - [ ] Job lifecycle
+   - [ ] Queue/worker implementation
+   - [ ] Retry and backoff policy
+   - [ ] Idempotency and duplicate protection
+   - [ ] Job status API
+   - [ ] Failure/recovery tests
+   - [ ] Resource and rate-limit controls
+
+**Phase 4 exit criteria:** AI is optional and validated, and background discovery is observable, retryable, idempotent, and rate-limit aware.
+
+### Phase 5 — Production
+**Theme: Make the platform durable, authenticated, and deployable**
+
+Goal: move from local application to production-grade service only after earlier phases are stable.
+
+13. **PostgreSQL**
+   - [ ] PostgreSQL history implementation
+   - [ ] Schema and migration strategy
+   - [ ] Data-access boundary
+   - [ ] SQLite local compatibility where appropriate
+   - [ ] Transaction and concurrency tests
+
+14. **API authentication**
+   - [~] Current API-key foundation
+   - [ ] Production authentication design
+   - [ ] Key/token rotation
+   - [ ] Authorization boundaries
+   - [ ] Audit/security logging
+   - [ ] Abuse/rate-limit controls
+   - [ ] Authentication regression tests
+
+15. **CI/CD deployment**
+   - [ ] CI test/build pipeline fully green
+   - [ ] Security/dependency checks
+   - [ ] Container build and smoke test
+   - [ ] Production environment configuration
+   - [ ] Deployment health checks
+   - [ ] Rollback procedure
+   - [ ] Render deployment
+   - [ ] Post-deployment verification
+
+**Phase 5 exit criteria:** persistent storage, production authentication, secure CI/CD, container validation, operational checks, and deployment verification are complete.
 
 ### Phase 3 — Web Platform
 
@@ -94,11 +226,23 @@ This roadmap is the project's build sequence. **Do not deploy the production ser
 
 ### Completion rule
 
+### Build Sequence
+
 The implementation order is intentional:
 
 **Foundation → API → Web Platform → Intelligence → Production**
 
-Production deployment is the final phase. Until Phases 2–5 are complete, changes should be developed and validated locally first. The README roadmap is the source-of-truth checklist for the remaining implementation work.
+For every phase:
+
+1. Read the roadmap before coding.
+2. Implement the next unchecked item.
+3. Add or update tests.
+4. Run the local test suite.
+5. Review security boundaries and failure cases.
+6. Mark the item `[x]` only when it is actually finished.
+7. Move to the next item.
+
+Production deployment is the final milestone, not an intermediate step. The README roadmap is the source-of-truth checklist for what we build and what remains.
 
 ---
 

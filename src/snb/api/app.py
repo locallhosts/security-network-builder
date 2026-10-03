@@ -17,8 +17,10 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..config import Profile
 from ..github_api import GitHubClient, GitHubError
 from ..history import History
+from ..scoring import score_candidate
 
 app = FastAPI(
     title="Security Network Builder API",

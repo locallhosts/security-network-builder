@@ -369,3 +369,25 @@ def test_private_engineer_analysis_rejects_invalid_login(monkeypatch):
     monkeypatch.delenv("API_KEY", raising=False)
     response = TestClient(app).get("/api/engineers/not valid!/analysis")
     assert response.status_code == 422
+
+
+def test_public_user_search_contract(monkeypatch):
+    monkeypatch.setattr(
+        "snb.api.app.GitHubClient.search_users",
+        lambda self, query, per_page=30, sort="followers", page=1: [
+            {
+                "login": "alice",
+                "type": "User",
+                "followers": 42,
+                "public_repos": 8,
+                "avatar_url": "https://avatars.githubusercontent.com/u/1",
+                "html_url": "https://github.com/alice",
+            }
+        ],
+    )
+    response = TestClient(app).get("/api/users/search?q=security")
+    assert response.status_code == 200
+    user = response.json()["results"][0]
+    assert user["login"] == "alice"
+    assert user["followers"] == 42
+    assert user["url"] == "https://github.com/alice"

@@ -5,8 +5,9 @@ WORKDIR /app
 COPY . .
 
 RUN pip install --upgrade pip \
-    && pip install -e ".[dev]"
+    && pip install .
 
-EXPOSE 8765
+ENV PORT=8000
+EXPOSE 8000
 
-CMD ["python", "-m", "snb", "dashboard", "--host", "0.0.0.0"]
+CMD ["sh", "-c", "uvicorn snb.api.app:app --host 0.0.0.0 --port ${PORT:-8000}"]

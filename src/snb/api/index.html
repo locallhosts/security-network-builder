@@ -126,6 +126,8 @@ async function loadEngineer(login){
   const bio=document.createElement('p');bio.className='muted';text(bio,d.bio||'No public bio.');profile.appendChild(bio);
   const meta=document.createElement('div');meta.className='meta';text(meta,'@'+d.login+' · '+Number(d.followers||0)+' followers · '+Number(d.public_repos||0)+' public repositories');profile.appendChild(meta);
   if(d.company){const company=document.createElement('p');company.className='meta';text(company,'Company: '+d.company);profile.appendChild(company)}
+  const orgTitle=document.createElement('h3');orgTitle.textContent='Organizations';profile.appendChild(orgTitle);
+  const orgs=document.createElement('p');orgs.className='meta';text(orgs,(d.organizations||[]).join(', ')||'No public organizations listed.');profile.appendChild(orgs);
   const title=document.createElement('h3');title.textContent='Recent public repositories';profile.appendChild(title);
   const list=document.createElement('div');list.className='results';
   (d.repositories||[]).forEach(repo=>{
@@ -135,6 +137,10 @@ async function loadEngineer(login){
    const m=document.createElement('div');m.className='meta';text(m,(repo.language||'Unknown')+' · ★ '+Number(repo.stars||0));item.appendChild(m);list.appendChild(item);
   });
   profile.appendChild(list);
+  const activityTitle=document.createElement('h3');activityTitle.textContent='Recent activity';profile.appendChild(activityTitle);
+  const activity=document.createElement('ul');activity.className='fallback-list';
+  (d.activity||[]).slice(0,8).forEach(item=>{const li=document.createElement('li');text(li,item.repository+(item.pushed_at?' — '+item.pushed_at:'')+(item.language?' · '+item.language:''));activity.appendChild(li)});
+  profile.appendChild(activity);
  }catch(err){clear(profile);const error=document.createElement('p');error.className='error';text(error,err.message||'Profile failed');profile.appendChild(error)}
 }
 async function search(){

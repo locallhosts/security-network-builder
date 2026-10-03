@@ -391,3 +391,28 @@ def test_public_user_search_contract(monkeypatch):
     assert user["login"] == "alice"
     assert user["followers"] == 42
     assert user["url"] == "https://github.com/alice"
+
+
+def test_repository_search_accepts_public_filters(monkeypatch):
+    seen = {}
+    def fake_search(self, query, per_page=30, sort="stars", page=1):
+        seen["query"] = query
+        seen["sort"] = sort
+        return []
+    monkeypatch.setattr("snb.api.app.GitHubClient.search_repositories", fake_search)
+    response = TestClient(app).get("/api/search?q=security&language=Go&min_stars=25&sort=updated")
+    assert response.status_code == 200
+    assert "language:Go" in seen["query"]
+    assert "stars:>=25" in seen["query"]
+    assert seen["sort"] == "updated"
+
+
+def test_public_web_ui_has_export_and_graph_controls():
+    response = TestClient(app).get("/")
+    assert response.status_code == 200
+    assert 'data-tab="users"' in response.text
+    assert 'id="export-results"' in response.text
+    assert 'id="download-svg"' in response.text
+    assert 'id="download-graph"' in response.text
+    assert 'id="node-filter"' in response.text
+    assert "--bg:#f7f9fc" in response.text

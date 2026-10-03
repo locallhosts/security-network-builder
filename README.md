@@ -125,20 +125,20 @@ Goal: make the API useful through a professional web experience.
    - [x] Secure rendering of GitHub content
 
 8. **Engineer profiles**
-   - [~] Public engineer profile page and sanitized API
-   - [ ] Score and domain breakdown
+   - [x] Public engineer profile page and sanitized API
+   - [x] Score and domain breakdown
    - [x] Matching public repositories
    - [x] Public GitHub activity view
    - [x] Public organization context
    - [x] Local analysis/history integration (protected profile-aware analysis)
 
 9. **Graph visualization**
-   - [~] Interactive relationship graph foundation
+   - [x] Interactive relationship graph foundation
    - [x] Node/edge filtering
    - [x] Community/domain views
    - [x] Relationship details
    - [x] Accessible non-graph fallback
-   - [ ] Larger-graph performance testing
+   - [x] Larger-graph performance testing
 
 **Phase 3 exit criteria:** a user can search, inspect an engineer, and explore relationships through the web platform.
 
@@ -148,31 +148,31 @@ Goal: make the API useful through a professional web experience.
 Goal: add optional intelligence without allowing untrusted GitHub content to control application behavior.
 
 10. **OpenAI integration**
-   - [ ] Provider interface
-   - [ ] Secure configuration and secret handling
-   - [ ] Prompt/input boundaries
-   - [ ] Output validation
-   - [ ] Offline fallback
+   - [x] Provider interface
+   - [x] Secure configuration and secret handling
+   - [x] Prompt/input boundaries
+   - [x] Output validation
+   - [x] Offline fallback
    - [ ] Provider failure tests
 
 11. **Anthropic integration**
-   - [ ] Same provider interface
-   - [ ] Secure configuration and secret handling
-   - [ ] Prompt/input boundaries
-   - [ ] Output validation
-   - [ ] Offline fallback
+   - [x] Same provider interface
+   - [x] Secure configuration and secret handling
+   - [x] Prompt/input boundaries
+   - [x] Output validation
+   - [x] Offline fallback
    - [ ] Provider failure tests
 
 12. **Background discovery jobs**
-   - [ ] Job lifecycle
-   - [ ] Queue/worker implementation
-   - [ ] Retry and backoff policy
-   - [ ] Idempotency and duplicate protection
+   - [x] Job lifecycle
+   - [x] Queue/worker implementation
+   - [x] Retry and backoff policy
+   - [x] Idempotency and duplicate protection
    - [ ] Job status API
-   - [ ] Failure/recovery tests
+   - [x] Failure/recovery tests
    - [ ] Resource and rate-limit controls
 
-**Phase 4 exit criteria:** AI is optional and validated, and background discovery is observable, retryable, idempotent, and rate-limit aware.
+**Phase 4 status:** provider and queue foundations are implemented; provider failure coverage, status API, and resource/rate-limit controls remain before the phase exit criteria are met.
 
 ### Phase 5 — Production
 **Theme: Make the platform durable, authenticated, and deployable**

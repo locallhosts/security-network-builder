@@ -125,18 +125,18 @@ Goal: make the API useful through a professional web experience.
    - [x] Secure rendering of GitHub content
 
 8. **Engineer profiles**
-   - [ ] Engineer profile page
+   - [~] Public engineer profile page and sanitized API
    - [ ] Score and domain breakdown
-   - [ ] Matching repositories and evidence
+   - [x] Matching public repositories
    - [ ] Activity/history view
    - [ ] Organization and relationship context
 
 9. **Graph visualization**
-   - [ ] Interactive relationship graph
+   - [~] Interactive relationship graph foundation
    - [ ] Node/edge filtering
    - [ ] Community/domain views
    - [ ] Relationship details
-   - [ ] Accessible non-graph fallback
+   - [x] Accessible non-graph fallback
    - [ ] Larger-graph performance testing
 
 **Phase 3 exit criteria:** a user can search, inspect an engineer, and explore relationships through the web platform.

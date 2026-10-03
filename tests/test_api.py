@@ -243,3 +243,14 @@ def test_graph_response_contract_handles_missing_run(monkeypatch):
     response = TestClient(app).get("/api/graph")
     assert response.status_code == 200
     assert response.json() == {"nodes": [], "edges": [], "communities": []}
+
+
+def test_public_web_ui_exposes_secure_search_controls():
+    response = TestClient(app).get("/")
+    assert response.status_code == 200
+    assert 'id="language"' in response.text
+    assert 'id="min-stars"' in response.text
+    assert 'id="prev"' in response.text
+    assert 'id="next"' in response.text
+    assert "createElementNS" in response.text
+    assert "innerHTML" not in response.text

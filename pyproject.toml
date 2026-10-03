@@ -25,3 +25,4 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 snb = ["default_profile.yaml"]
+snb.api = ["index.html"]

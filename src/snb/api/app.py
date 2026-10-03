@@ -17,6 +17,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..audit import AuditLog
 from ..config import Profile
 from ..github_api import GitHubClient, GitHubError
 from ..history import History
@@ -162,11 +163,14 @@ def get_jobs() -> JobQueue:
 
 def require_api_key(value: str | None) -> None:
     settings = load_settings()
+    audit = AuditLog(os.environ.get("SNB_AUDIT_DB", "data/audit.db"))
     if not settings.api_keys:
         if settings.environment == "production":
+            audit.record("auth.private", outcome="rejected", detail="production authentication not configured")
             raise HTTPException(status_code=503, detail="private API authentication is not configured")
         return
     if value is None or not any(secrets.compare_digest(value, configured) for configured in settings.api_keys):
+        audit.record("auth.private", outcome="rejected", detail="invalid API key")
         raise HTTPException(status_code=401, detail="invalid API key")
 
 

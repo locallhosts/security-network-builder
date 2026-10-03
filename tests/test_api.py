@@ -23,7 +23,13 @@ def test_protected_endpoint_requires_key(monkeypatch):
     assert client.get("/api/runs", headers={"X-API-Key": "secret"}).status_code == 200
 
 
-def test_search_requires_api_key_when_configured(monkeypatch):
+def test_search_is_public_even_when_api_key_is_configured(monkeypatch):
     monkeypatch.setenv("API_KEY", "secret")
     client = TestClient(app)
-    assert client.get("/api/search?q=ebpf").status_code == 401
+    assert client.get("/api/search?q=ebpf").status_code != 401
+
+
+def test_graph_is_public_even_when_api_key_is_configured(monkeypatch):
+    monkeypatch.setenv("API_KEY", "secret")
+    client = TestClient(app)
+    assert client.get("/api/graph").status_code == 200

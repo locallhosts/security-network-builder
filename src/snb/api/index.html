@@ -210,10 +210,15 @@ function drawGraph(){
  const display=nodes.length>140?nodes.slice(0,140):nodes;const allowed=new Set(display.map(n=>n.login));const displayEdges=edges.filter(e=>allowed.has(e.a)&&allowed.has(e.b));const pos=layout(display,displayEdges);const ns="http://www.w3.org/2000/svg";
  const root=document.createElementNS(ns,"g");root.setAttribute("transform",`translate(${view.tx} ${view.ty}) scale(${view.scale})`);svg.appendChild(root);
  displayEdges.forEach(e=>{const a=pos[e.a],b=pos[e.b],line=document.createElementNS(ns,"line");line.setAttribute("x1",a.x);line.setAttribute("y1",a.y);line.setAttribute("x2",b.x);line.setAttribute("y2",b.y);line.setAttribute("stroke-width",String(Math.max(1,Math.min(8,Number(e.weight)||1))));line.setAttribute("class","edge");line.dataset.a=e.a;line.dataset.b=e.b;root.appendChild(line)});
- display.forEach(n=>{const p=pos[n.login],g=document.createElementNS(ns,"g");g.setAttribute("class","node");g.dataset.login=n.login;const circle=document.createElementNS(ns,"circle");circle.setAttribute("cx",p.x);circle.setAttribute("cy",p.y);circle.setAttribute("r",String(7+Math.min(18,Number(n.score||0)/4)));circle.setAttribute("fill",graphColor(n.community));g.appendChild(circle);const title=document.createElementNS(ns,"title");title.textContent="@"+n.login+" · score "+Number(n.score||0)+" · centrality "+Number(n.centrality||0);g.appendChild(title);const label=document.createElementNS(ns,"text");label.setAttribute("x",p.x+11);label.setAttribute("y",p.y+4);label.textContent="@"+n.login;g.appendChild(label);
- let drag=false;g.addEventListener("pointerdown",ev=>{drag=true;g.setPointerCapture(ev.pointerId);ev.stopPropagation()});g.addEventListener("pointermove",ev=>{if(!drag)return;const r=svg.getBoundingClientRect();const x=(ev.clientX-r.left)/r.width*1200,y=(ev.clientY-r.top)/r.height*650;circle.setAttribute("cx",x);circle.setAttribute("cy",y);label.setAttribute("x",x+11);label.setAttribute("y",y+4);displayEdges.forEach(e=>{if(e.a!==n.login&&e.b!==n.login)return;const l=root.querySelector('line[data-a="'+CSS.escape(e.a)+'"][data-b="'+CSS.escape(e.b)+'"]');if(l){const other=e.a===n.login?pos[e.b]:pos[e.a];l.setAttribute("x1",e.a===n.login?x:other.x);l.setAttribute("y1",e.a===n.login?y:other.y);l.setAttribute("x2",e.b===n.login?x:other.x);l.setAttribute("y2",e.b===n.login?y:other.y)}})});g.addEventListener("pointerup",()=>{if(drag){drag=false;showNode(n.login)}});g.addEventListener("click",()=>showNode(n.login));root.appendChild(g);
- const li=el("li",{},el("button",{class:"btn",onclick:()=>showNode(n.login)},"@"+n.login)," · score "+Number(n.score||0)+" · centrality "+Number(n.centrality||0));$("#graph-fallback").appendChild(li)
- });
+ let nodeIndex=0;
+ const renderChunk=()=>{
+  const chunk=display.slice(nodeIndex,nodeIndex+25);
+  chunk.forEach(renderNode);
+  nodeIndex+=chunk.length;
+  if(nodeIndex<display.length)requestAnimationFrame(renderChunk);
+  else setGraphStatus((nodes.length>140?"Showing 140 of ":"Showing ")+nodes.length+" nodes · "+displayEdges.length+" relationships");
+ };
+ renderChunk();
  setGraphStatus((nodes.length>140?"Showing 140 of ":"Showing ")+nodes.length+" nodes · "+displayEdges.length+" relationships");
 }
 function elNS(tag,attrs,...children){const ns="http://www.w3.org/2000/svg",n=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));children.forEach(c=>{n.appendChild(document.createTextNode(c))});return n}

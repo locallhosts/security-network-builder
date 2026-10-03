@@ -764,6 +764,18 @@ def delete_workspace(workspace_id: str, x_api_key: str | None = Header(default=N
     return Response(status_code=204)
 
 
+@app.get("/api/public/engineers/{login}/relationships", tags=["public"])
+def public_engineer_relationships(request: Request, login: str) -> dict[str, Any]:
+    _check_search_rate(request)
+    if not re.fullmatch(r"[A-Za-z0-9-]{1,39}", login):
+        raise HTTPException(status_code=422, detail="invalid GitHub login")
+    data = get_history().get_run(get_history().latest_run_id()) if get_history().latest_run_id() else None
+    graph_data = {} if not data else data.get("graph", {})
+    edges = [e for e in graph_data.get("edges", []) if e.get("a") == login or e.get("b") == login]
+    edges.sort(key=lambda e: (-float(e.get("weight", 0)), str(e.get("a", "")), str(e.get("b", ""))))
+    return {"login": login, "source": "public GitHub-derived graph", "relationships": edges[:100]}
+
+
 @app.get("/api/public/engineers/compare", tags=["public"])
 def compare_engineers(
     request: Request,

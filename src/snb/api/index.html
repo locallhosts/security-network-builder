@@ -158,9 +158,13 @@ async function loadEngineer(login){
   const head=el("div",{class:"result-top"},el("div",{},el("h3",{},d.name||("@"+d.login)),el("div",{class:"meta"},"@"+d.login+" · "+Number(d.followers||0).toLocaleString()+" followers · "+Number(d.public_repos||0).toLocaleString()+" public repositories")),githubLink(d.url,"GitHub profile")||"");
   left.appendChild(head);left.appendChild(el("p",{class:"muted"},d.bio||"No public bio."));
   if(d.company)left.appendChild(el("p",{class:"meta"},"Company · "+d.company));
+  left.appendChild(el("h3",{},"Security domains"));left.appendChild(el("div",{class:"chips"},(d.security_domains||[]).map(x=>el("span",{class:"chip"},x))));
+  left.appendChild(el("h3",{},"Detected skills"));left.appendChild(el("div",{class:"chips"},(d.skills||[]).slice(0,24).map(x=>el("span",{class:"chip"},x))));
+  const trends=d.contribution_trends||{};
+  left.appendChild(el("h3",{},"Repository activity trend"));left.appendChild(el("div",{class:"metrics"},el("div",{class:"metric"},el("b",{},Number(trends.last_30_days||0))," last 30d"),el("div",{class:"metric"},el("b",{},Number(trends.last_90_days||0))," last 90d"),el("div",{class:"metric"},el("b",{},Number(trends.last_365_days||0))," last 365d")));
   left.appendChild(el("h3",{},"Organizations"));left.appendChild(el("div",{class:"chips"},(d.organizations||[]).map(o=>el("span",{class:"chip"},o))));
   left.appendChild(el("h3",{},"Recent activity"));left.appendChild(el("ul",{class:"fallback"},(d.activity||[]).slice(0,10).map(a=>el("li",{},a.repository+(a.pushed_at?" · "+a.pushed_at:"")+(a.language?" · "+a.language:"")))));
-  right.appendChild(el("h3",{},"Public repositories"));const list=el("div",{class:"repo-list"});(d.repositories||[]).forEach(r=>list.appendChild(el("div",{class:"repo-mini"},el("strong",{},githubLink(r.url,r.name)||r.name),el("span",{class:"meta"},"★ "+Number(r.stars||0)+" · "+(r.language||"Unknown")),el("div",{class:"muted"},r.description||"No description"))));right.appendChild(list);
+  right.appendChild(el("h3",{},"Repository health signals"));const list=el("div",{class:"repo-list"});(d.repository_signals||[]).slice(0,12).forEach(r=>{const repo=(d.repositories||[]).find(x=>x.name===r.name);list.appendChild(el("div",{class:"repo-mini"},el("strong",{},githubLink(repo?.url,r.name)||r.name),el("span",{class:"meta"},"★ "+Number(r.stars||0)+" · forks "+Number(r.forks||0)+" · "+r.maintenance),el("div",{class:"muted"},(r.security_domains||[]).join(" · ")||"No configured security-domain match"))) });right.appendChild(list);
   box.appendChild(el("div",{class:"profile-grid"},left,right));
  }catch(e){clear(box);box.appendChild(el("div",{class:"empty"},e.message))}
 }

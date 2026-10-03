@@ -1,0 +1,20 @@
+from fastapi.testclient import TestClient
+from snb.api.app import app
+
+
+def test_readiness_fails_closed_without_production_auth(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNB_HISTORY_DB", str(tmp_path / "history.db"))
+    monkeypatch.setenv("SNB_ENV", "production")
+    monkeypatch.delenv("API_KEY", raising=False)
+    monkeypatch.delenv("API_KEYS", raising=False)
+    response = TestClient(app).get("/api/readiness")
+    assert response.json()["status"] == "degraded"
+    assert response.json()["checks"]["authentication"] == "error"
+
+
+def test_readiness_is_ok_with_production_auth(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNB_HISTORY_DB", str(tmp_path / "history.db"))
+    monkeypatch.setenv("SNB_ENV", "production")
+    monkeypatch.setenv("API_KEYS", "one,two")
+    response = TestClient(app).get("/api/readiness")
+    assert response.json()["status"] == "ok"

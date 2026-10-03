@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import Recommendation
+from .migrations import apply_migrations
 
 STATUSES = {"new", "reviewing", "connected", "ignored"}
 
@@ -45,6 +46,7 @@ class History:
             self.path = self.database_url
             with self._conn() as conn:
                 self._init_postgres(conn)
+                apply_migrations(conn, backend="postgres")
         else:
             self.path = self.database_url or "data/history.db"
             if self.path != ":memory:":
@@ -52,6 +54,7 @@ class History:
             self._memory = sqlite3.connect(":memory:", check_same_thread=False) if self.path == ":memory:" else None
             with self._conn() as conn:
                 conn.executescript(_SCHEMA)
+                apply_migrations(conn, backend="sqlite")
                 conn.commit()
 
     def _conn(self):

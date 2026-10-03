@@ -108,6 +108,13 @@ class PublicEngineerProfile(BaseModel):
     repositories: list[PublicRepository]
 
 
+def _nonnegative_int(value: Any) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 def _public_github_url(value: Any) -> str | None:
     if not isinstance(value, str):
         return None
@@ -266,7 +273,7 @@ def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
             PublicRepository(
                 name=str(repo.get("name") or ""),
                 description=repo.get("description"),
-                stars=max(0, int(repo.get("stargazers_count") or 0)),
+                stars=_nonnegative_int(repo.get("stargazers_count")),
                 language=repo.get("language"),
                 url=_public_github_url(repo.get("html_url")),
             )
@@ -277,8 +284,8 @@ def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
         name=profile.get("name"),
         bio=profile.get("bio"),
         company=profile.get("company"),
-        followers=max(0, int(profile.get("followers") or 0)),
-        public_repos=max(0, int(profile.get("public_repos") or 0)),
+        followers=_nonnegative_int(profile.get("followers")),
+        public_repos=_nonnegative_int(profile.get("public_repos")),
         created_at=profile.get("created_at"),
         url=_public_github_url(profile.get("html_url")),
         repositories=public_repositories,

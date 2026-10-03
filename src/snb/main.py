@@ -21,7 +21,7 @@ from pathlib import Path
 from . import __version__
 from .config import Profile, load_env, read_profile_text
 from .discovery import discover
-from .explain import LLM, explain_all
+from .explain import LLM, OpenAILLM, explain_all
 from .github_api import GitHubClient, GitHubError, RateLimitError
 from .graph import build_graph
 from .graphql_api import BATCH_SIZE, fetch_users
@@ -142,9 +142,11 @@ def run(args: argparse.Namespace) -> int:
 
     llm = None
     if args.ai:
-        llm = LLM.from_env()
+        provider = os.environ.get("AI_PROVIDER", "anthropic").lower()
+        llm = OpenAILLM.from_env() if provider == "openai" else LLM.from_env()
+        required = "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY"
         if not llm:
-            print("Warning: --ai needs ANTHROPIC_API_KEY; using offline explanations.\n")
+            print(f"Warning: --ai needs {required}; using offline explanations.\\n")
 
     profile = Profile.load(args.profile)
     client = GitHubClient(token)

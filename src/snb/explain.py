@@ -141,17 +141,17 @@ class OpenAILLM:
         key = os.environ.get("OPENAI_API_KEY")
         return cls(key) if key else None
 
-    def explain(self, rec: Recommendation) -> str:
-        payload = _escape(_payload(rec))
+    def complete(self, system: str, user: str, max_tokens: int = 400) -> str:
         try:
             resp = self.session.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {self.api_key}", "content-type": "application/json"},
                 json={
                     "model": self.model,
+                    "max_tokens": max_tokens,
                     "messages": [
-                        {"role": "system", "content": _SYSTEM},
-                        {"role": "user", "content": f"<data>\\n{payload}\\n</data>"},
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user},
                     ],
                 },
                 timeout=60,
@@ -165,3 +165,6 @@ class OpenAILLM:
         if not isinstance(raw, str) or not raw.strip():
             raise LLMError("empty response")
         return raw.strip()
+
+    def explain(self, rec: Recommendation) -> str:
+        return self.complete(_SYSTEM, f"<data>\\n{_escape(_payload(rec))}\\n</data>", max_tokens=300)

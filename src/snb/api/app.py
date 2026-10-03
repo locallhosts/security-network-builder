@@ -6,6 +6,7 @@ import os
 import secrets
 import time
 from collections import defaultdict, deque
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -23,15 +24,35 @@ app = FastAPI(
     version="1.0.0",
     description="Public, read-only GitHub security discovery and community graph API.",
 )
-DB_PATH = os.environ.get("SNB_HISTORY_DB", "data/history.db")
 PUBLIC_PAGE = (Path(__file__).with_name("index.html")).read_text(encoding="utf-8")
 
-_ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.environ.get("SNB_ALLOWED_HOSTS", "*").split(",")
-    if host.strip()
-]
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=_ALLOWED_HOSTS or ["*"])
+
+@dataclass(frozen=True)
+class APISettings:
+    """Environment-backed configuration for the public API boundary."""
+
+    history_db: str
+    github_token: str | None
+    api_key: str | None
+    allowed_hosts: tuple[str, ...]
+
+
+def load_settings() -> APISettings:
+    allowed_hosts = tuple(
+        host.strip()
+        for host in os.environ.get("SNB_ALLOWED_HOSTS", "*").split(",")
+        if host.strip()
+    )
+    return APISettings(
+        history_db=os.environ.get("SNB_HISTORY_DB", "data/history.db"),
+        github_token=os.environ.get("GITHUB_TOKEN") or None,
+        api_key=os.environ.get("API_KEY") or None,
+        allowed_hosts=allowed_hosts or ("*",),
+    )
+
+
+_SETTINGS = load_settings()
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(_SETTINGS.allowed_hosts))
 
 
 class HealthResponse(BaseModel):
@@ -79,11 +100,11 @@ _search_hits: dict[str, deque[float]] = defaultdict(deque)
 
 
 def get_history() -> History:
-    return History(DB_PATH)
+    return History(_SETTINGS.history_db)
 
 
 def require_api_key(value: str | None) -> None:
-    configured = os.environ.get("API_KEY")
+    configured = _SETTINGS.api_key
     if configured and (value is None or not secrets.compare_digest(value, configured)):
         raise HTTPException(status_code=401, detail="invalid API key")
 
@@ -138,7 +159,7 @@ def search(
 ) -> SearchResponse:
     """Search public GitHub repositories. No private API key is exposed to browsers."""
     _check_search_rate(request)
-    client = GitHubClient(os.environ.get("GITHUB_TOKEN") or None)
+    client = GitHubClient(_SETTINGS.github_token)
     try:
         items = client.search_repositories(q, per_page=limit)
     except GitHubError as exc:
@@ -205,5 +226,5 @@ def graph() -> GraphResponse:
         return GraphResponse(nodes=[], edges=[], communities=[])
     data = h.get_run(run_id)
     if not data:
-        return {"nodes": [], "edges": [], "communities": []}
+        return GraphResponse(nodes=[], edges=[], communities=[])
     return GraphResponse.model_validate(data.get("graph", {"nodes": [], "edges": [], "communities": []}))

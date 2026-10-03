@@ -25,8 +25,14 @@ def test_protected_endpoint_requires_key(monkeypatch):
 
 def test_search_is_public_even_when_api_key_is_configured(monkeypatch):
     monkeypatch.setenv("API_KEY", "secret")
+    monkeypatch.setattr(
+        "snb.api.app.GitHubClient.search_repositories",
+        lambda self, query, per_page=30: [{"full_name": "acme/ebpf", "description": "runtime security", "stargazers_count": 4, "language": "Go", "owner": {"login": "acme"}, "html_url": "https://github.com/acme/ebpf"}],
+    )
     client = TestClient(app)
-    assert client.get("/api/search?q=ebpf").status_code != 401
+    response = client.get("/api/search?q=ebpf")
+    assert response.status_code == 200
+    assert response.json()["results"][0]["repository"] == "acme/ebpf"
 
 
 def test_graph_is_public_even_when_api_key_is_configured(monkeypatch):

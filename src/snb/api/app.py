@@ -389,6 +389,7 @@ def health() -> HealthResponse:
 @app.get("/api/search", response_model=SearchResponse, tags=["public"])
 def search(
     request: Request,
+    response: Response,
     q: str = Query(..., min_length=2, max_length=100),
     limit: int = Query(10, ge=1, le=30),
     page: int = Query(1, ge=1, le=34),
@@ -399,7 +400,6 @@ def search(
     topic: str | None = Query(default=None, max_length=50),
     archived: bool | None = Query(default=None),
     fork: bool | None = Query(default=None),
-    response: Response,
 ) -> SearchResponse:
     """Search public GitHub repositories. No private API key is exposed to browsers."""
     _check_search_rate(request)

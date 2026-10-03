@@ -137,7 +137,7 @@ async function search(){
   let d;
   if(state.mode==="repos"){params.language=$("#language").value;params.min_stars=$("#min-stars").value;d=await getJson(apiUrl("/api/search",params))}
   else d=await getJson(apiUrl("/api/users/search",params));
-  state.results=d.results||[];state.page=d.page;renderRepoResults=state.mode==="repos"?renderRepoResults:renderRepoResults;state.mode==="repos"?renderRepoResults():renderUserResults();
+  state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults();
   setStatus(state.results.length+" result(s) on page "+d.page,"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit;$("#export-results").disabled=!state.results.length;
  }catch(e){clear($("#results"));$("#results").appendChild(el("div",{class:"empty"},e.message));setStatus(e.message,"error");$("#export-results").disabled=true}
 }

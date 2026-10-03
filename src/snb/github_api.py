@@ -133,6 +133,30 @@ class GitHubClient:
         )
         return data.get("items", [])
 
+    def search_users(
+        self,
+        query: str,
+        per_page: int = 30,
+        sort: str = "followers",
+        page: int = 1,
+    ) -> list[dict[str, Any]]:
+        """Search public GitHub users with bounded, read-only search."""
+        self._throttle_search()
+        allowed_sort = {"followers", "repositories", "joined"}
+        if sort not in allowed_sort:
+            sort = "followers"
+        data = self._request(
+            "/search/users",
+            {
+                "q": query,
+                "sort": sort,
+                "order": "desc",
+                "per_page": min(per_page, 100),
+                "page": max(page, 1),
+            },
+        )
+        return data.get("items", [])
+
     def list_user_repos(self, login: str, limit: int = 100) -> list[dict[str, Any]]:
         try:
             return self._request(

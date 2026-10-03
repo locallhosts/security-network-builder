@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..github_api import GitHubClient, GitHubError
 from ..history import History
@@ -31,6 +32,33 @@ _ALLOWED_HOSTS = [
     if host.strip()
 ]
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=_ALLOWED_HOSTS or ["*"])
+
+
+class HealthResponse(BaseModel):
+    status: str
+    service: str
+
+
+class SearchResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    repository: str | None
+    description: str | None
+    stars: int = Field(ge=0)
+    language: str | None
+    owner: str | None
+    url: str | None
+
+
+class SearchResponse(BaseModel):
+    query: str
+    results: list[SearchResult]
+
+
+class GraphResponse(BaseModel):
+    nodes: list[dict[str, Any]]
+    edges: list[dict[str, Any]]
+    communities: list[Any]
 
 
 def _public_github_url(value: Any) -> str | None:
@@ -97,17 +125,17 @@ def home() -> HTMLResponse:
     return HTMLResponse(PUBLIC_PAGE)
 
 
-@app.get("/api/health", tags=["public"])
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": "security-network-builder"}
+@app.get("/api/health", response_model=HealthResponse, tags=["public"])
+def health() -> HealthResponse:
+    return HealthResponse(status="ok", service="security-network-builder")
 
 
-@app.get("/api/search", tags=["public"])
+@app.get("/api/search", response_model=SearchResponse, tags=["public"])
 def search(
     request: Request,
     q: str = Query(..., min_length=2, max_length=100),
     limit: int = Query(10, ge=1, le=30),
-) -> dict[str, Any]:
+) -> SearchResponse:
     """Search public GitHub repositories. No private API key is exposed to browsers."""
     _check_search_rate(request)
     client = GitHubClient(os.environ.get("GITHUB_TOKEN") or None)
@@ -128,7 +156,7 @@ def search(
                 "url": _public_github_url(item.get("html_url")),
             }
         )
-    return {"query": q, "results": results}
+    return SearchResponse(query=q, results=results)
 
 
 @app.get("/api/runs", tags=["private"])
@@ -168,14 +196,14 @@ def engineer(login: str, x_api_key: str | None = Header(default=None)) -> dict[s
     return {"login": login, "history": get_history().engineer_history(login)}
 
 
-@app.get("/api/graph", tags=["public"])
-def graph() -> dict[str, Any]:
+@app.get("/api/graph", response_model=GraphResponse, tags=["public"])
+def graph() -> GraphResponse:
     """Return only the latest run's relationship graph, without triage notes."""
     h = get_history()
     run_id = h.latest_run_id()
     if run_id is None:
-        return {"nodes": [], "edges": [], "communities": []}
+        return GraphResponse(nodes=[], edges=[], communities=[])
     data = h.get_run(run_id)
     if not data:
         return {"nodes": [], "edges": [], "communities": []}
-    return data.get("graph", {"nodes": [], "edges": [], "communities": []})
+    return GraphResponse.model_validate(data.get("graph", {"nodes": [], "edges": [], "communities": []}))

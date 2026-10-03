@@ -681,6 +681,7 @@ security-network-builder/
 │   ├── graph.py            # relationship graph, centrality, communities
 │   ├── orgs.py             # organization analysis
 │   ├── history.py          # SQLite run history, triage notes, run diffs
+│   ├── workspace.py        # private investigation workspace, evidence, notes and timeline
 │   ├── explain.py          # offline and optional LLM explanations
 │   ├── profile_builder.py  # profile suggestion
 │   ├── dashboard.py        # hardened local HTTP server
@@ -690,6 +691,8 @@ security-network-builder/
 │   └── report.py
 ├── profiles/
 │   └── security_profile.yaml   # your editable profile
+├── docs/
+│   └── WEB_PLATFORM.md         # public UI, accessibility, graph and operational behavior
 ├── tests/                  # offline pytest suite, plus a jsdom dashboard test
 ├── .github/                # CI workflow and Dependabot configuration
 ├── pyproject.toml

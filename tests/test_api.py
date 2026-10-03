@@ -298,6 +298,63 @@ def test_public_engineer_profile_is_sanitized_and_public(monkeypatch):
     assert data["repositories"][0]["url"] == "https://github.com/alice/secure-tool"
     assert data["organizations"] == ["ExampleOrg"]
     assert data["activity"][0]["repository"] == "secure-tool"
+    assert "security_domains" in data
+    assert "Go" in data["skills"]
+    assert data["contribution_trends"]["last_365_days"] == 1
+    assert data["repository_signals"][0]["maintenance"] == "active"
+
+
+def test_public_engineer_intelligence_classifies_real_profile_metadata(monkeypatch):
+    monkeypatch.setattr(
+        "snb.api.app.GitHubClient.get_user",
+        lambda self, login: {
+            "login": login,
+            "name": "Alice",
+            "followers": 12,
+            "public_repos": 2,
+            "html_url": "https://github.com/alice",
+        },
+    )
+    monkeypatch.setattr("snb.api.app.GitHubClient.list_user_orgs", lambda self, login: [])
+    monkeypatch.setattr(
+        "snb.api.app.GitHubClient.list_user_repos",
+        lambda self, login, limit=100: [
+            {
+                "name": "ebpf-runtime-security",
+                "description": "eBPF runtime security",
+                "topics": ["ebpf", "runtime-security"],
+                "stargazers_count": 10,
+                "forks_count": 2,
+                "open_issues_count": 1,
+                "language": "Go",
+                "pushed_at": "2026-10-01T00:00:00Z",
+                "archived": False,
+                "fork": False,
+                "html_url": "https://github.com/alice/ebpf-runtime-security",
+            },
+            {
+                "name": "old-fork",
+                "description": "old copy",
+                "topics": [],
+                "stargazers_count": 1,
+                "forks_count": 0,
+                "open_issues_count": 0,
+                "language": "Python",
+                "pushed_at": "2024-01-01T00:00:00Z",
+                "archived": True,
+                "fork": True,
+                "html_url": "https://github.com/alice/old-fork",
+            },
+        ],
+    )
+    response = TestClient(app).get("/api/public/engineers/alice")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["security_domains"]
+    assert "eBPF" in " ".join(data["skills"]).lower() or "ebpf" in " ".join(data["skills"]).lower()
+    assert data["contribution_trends"]["last_30_days"] >= 1
+    assert data["repository_signals"][0]["maintenance"] == "active"
+    assert any(item["maintenance"] == "archived" for item in data["repository_signals"])
 
 
 def test_public_engineer_profile_rejects_invalid_login():

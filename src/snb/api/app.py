@@ -364,6 +364,11 @@ def search(
     language: str | None = Query(default=None, max_length=40),
     min_stars: int = Query(0, ge=0, le=1_000_000),
     sort: str = Query("stars", pattern="^(stars|forks|updated|help-wanted-issues|best-match)$"),
+    owner: str | None = Query(default=None, max_length=39, pattern="^[A-Za-z0-9-]+$"),
+    topic: str | None = Query(default=None, max_length=50),
+    archived: bool | None = Query(default=None),
+    fork: bool | None = Query(default=None),
+    response: Response = None,
 ) -> SearchResponse:
     """Search public GitHub repositories. No private API key is exposed to browsers."""
     _check_search_rate(request)
@@ -373,13 +378,26 @@ def search(
         search_query += f" language:{language.strip()}"
     if min_stars:
         search_query += f" stars:>={min_stars}"
+    if owner:
+        search_query += f" user:{owner}"
+    if topic:
+        search_query += f" topic:{topic.strip()}"
+    if archived is not None:
+        search_query += f" archived:{str(archived).lower()}"
+    if fork is not None:
+        search_query += f" fork:{str(fork).lower()}"
     try:
         items = client.search_repositories(search_query, per_page=limit, page=page, sort=sort)
     except GitHubError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     results = []
+    seen: set[str] = set()
     for item in items:
         owner = item.get("owner") or {}
+        full_name = item.get("full_name")
+        if not isinstance(full_name, str) or full_name.lower() in seen:
+            continue
+        seen.add(full_name.lower())
         raw = {
             "repository": item.get("full_name"),
             "description": item.get("description"),
@@ -392,6 +410,11 @@ def search(
             results.append(SearchResult.model_validate(raw))
         except ValidationError as exc:
             raise HTTPException(status_code=500, detail="invalid upstream search result") from exc
+    if response is not None:
+        for header in ("X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"):
+            if header in client.last_headers:
+                response.headers[header] = client.last_headers[header]
+        response.headers["X-Data-Source"] = "github"
     return SearchResponse(query=q, page=page, limit=limit, results=results)
 
 
@@ -592,6 +615,18 @@ def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
         contribution_trends=trends,
         repository_signals=repository_signals,
     )
+
+
+@app.get("/api/usage", tags=["public"])
+def usage(request: Request, response: Response) -> dict[str, Any]:
+    _check_search_rate(request)
+    client = GitHubClient(load_settings().github_token)
+    try:
+        resources = client.rate_limit()
+    except GitHubError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    response.headers["X-Data-Source"] = "github"
+    return {"source": "github", "core": resources.get("core") or {}, "search": resources.get("search") or {}, "generated_at": datetime.now(timezone.utc).isoformat()}
 
 
 @app.get("/api/usage", tags=["public"])

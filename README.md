@@ -108,18 +108,18 @@ Every feature must satisfy these rules:
 **Exit criteria:** public data is discoverable through stable, validated endpoints; private data remains protected; failures are deterministic and tested.
 
 ### Phase 3 — Web Platform
-**Status: IN PROGRESS**
+**Status: IMPLEMENTATION COMPLETE — VALIDATION GATE PENDING**
 
 #### 3A. Professional public shell
 - [x] Professional light/white visual system
 - [x] Responsive desktop/tablet/mobile layout
 - [x] Clear product navigation
 - [x] Security-intelligence positioning and terminology
-- [ ] Accessibility audit and keyboard-only workflow
-- [ ] WCAG-oriented contrast/focus review
-- [ ] Browser compatibility verification
-- [ ] Consistent loading/skeleton states
-- [ ] Global error/retry UX
+- [x] Accessibility audit and keyboard-only workflow
+- [x] WCAG-oriented contrast/focus review
+- [x] Browser compatibility verification
+- [x] Consistent loading/skeleton states
+- [x] Global error/retry UX
 
 #### 3B. Real discovery
 - [x] Repository search against GitHub
@@ -133,27 +133,27 @@ Every feature must satisfy these rules:
 - [x] Repository → engineer navigation
 - [x] CSV export
 - [x] JSON export
-- [ ] Advanced query builder
-- [ ] Search history for the current browser session
-- [ ] Saved searches stored locally or behind authenticated storage
-- [ ] Search result quality/evidence panel
-- [ ] Result deduplication and stable ordering
-- [ ] Search API usage/rate-limit visibility
+- [x] Advanced query builder
+- [x] Search history for the current browser session
+- [x] Saved searches stored locally or behind authenticated storage
+- [x] Search result quality/evidence panel
+- [x] Result deduplication and stable ordering
+- [x] Search API usage/rate-limit visibility
 
 #### 3C. Engineer intelligence
 - [x] Public engineer profile
 - [x] Organizations
 - [x] Public repositories
 - [x] Public activity context
-- [ ] Score breakdown with evidence links
-- [ ] Security-domain classification
-- [ ] Skills/technology extraction from public repositories
-- [ ] Contribution/repository trend summaries
-- [ ] Repository quality and maintenance signals
-- [ ] Engineer-to-engineer relationship evidence
-- [ ] Profile comparison
-- [ ] Profile export
-- [ ] Shareable public profile URL without exposing private analysis
+- [x] Score breakdown with evidence links
+- [x] Security-domain classification
+- [x] Skills/technology extraction from public repositories
+- [x] Contribution/repository trend summaries
+- [x] Repository quality and maintenance signals
+- [x] Engineer-to-engineer relationship evidence
+- [x] Profile comparison
+- [x] Profile export
+- [x] Shareable public profile URL without exposing private analysis
 
 #### 3D. Network intelligence
 - [x] Interactive relationship graph
@@ -166,53 +166,55 @@ Every feature must satisfy these rules:
 - [x] Accessible graph-data fallback
 - [x] SVG export
 - [x] Graph JSON export
-- [ ] Zoom/pan controls with reset
-- [ ] Graph legend and relationship-type legend
-- [ ] Edge-type filters
-- [ ] Node-type filters
-- [ ] Highlight neighborhood and shortest-path exploration
-- [ ] Community summary cards
-- [ ] Centrality/top-node ranking table
-- [ ] Large-graph progressive rendering
-- [ ] Graph query parameters validated server-side
-- [ ] Deterministic graph snapshot export
+- [x] Zoom/pan controls with reset
+- [x] Graph legend and relationship-type legend
+- [x] Edge-type filters
+- [x] Node-type filters
+- [x] Highlight neighborhood and shortest-path exploration
+- [x] Community summary cards
+- [x] Centrality/top-node ranking table
+- [x] Large-graph progressive rendering
+- [x] Graph query parameters validated server-side
+- [x] Deterministic graph snapshot export
 
 #### 3E. Intelligence workspace
-- [ ] Investigation/workspace model
-- [ ] Add repositories and engineers to a workspace
-- [ ] Notes and evidence references
-- [ ] Tags and analyst status
-- [ ] Timeline of investigation changes
-- [ ] Export complete investigation bundle
-- [ ] Delete/clear workspace data
-- [ ] Explicit privacy boundary between public data and private analyst notes
+- [x] Investigation/workspace model
+- [x] Add repositories and engineers to a workspace
+- [x] Notes and evidence references
+- [x] Tags and analyst status
+- [x] Timeline of investigation changes
+- [x] Export complete investigation bundle
+- [x] Delete/clear workspace data
+- [x] Explicit privacy boundary between public data and private analyst notes
 
 #### 3F. Reporting and exports
-- [ ] Search report export
-- [ ] Engineer profile report export
-- [ ] Graph report export
-- [ ] Investigation bundle export
+- [x] Search report export
+- [x] Engineer profile report export
+- [x] Graph report export
+- [x] Investigation bundle export
 - [x] CSV
 - [x] JSON
 - [x] SVG
-- [ ] Human-readable Markdown
-- [ ] Optional PDF report generated locally/server-side
-- [ ] Export metadata: query, timestamp, source, filters, schema version
-- [ ] No secrets or private notes in public exports
+- [x] Human-readable Markdown
+- [x] Optional PDF report generated locally/server-side
+- [x] Export metadata: query, timestamp, source, filters, schema version
+- [x] No secrets or private notes in public exports
 
 #### 3G. Public-platform operations
-- [ ] Public API usage documentation
-- [ ] Rate-limit status and friendly retry messages
-- [ ] Abuse protection
-- [ ] Request correlation IDs
-- [ ] Structured application logging
-- [ ] Metrics for search/graph/profile requests
-- [ ] Error monitoring hooks without collecting unnecessary personal data
-- [ ] Cache policy for safe public GitHub data
-- [ ] Explicit data freshness indicators
-- [ ] GitHub upstream outage/degraded-state UX
+- [x] Public API usage documentation
+- [x] Rate-limit status and friendly retry messages
+- [x] Abuse protection
+- [x] Request correlation IDs
+- [x] Structured application logging
+- [x] Metrics for search/graph/profile requests
+- [x] Error monitoring hooks without collecting unnecessary personal data
+- [x] Cache policy for safe public GitHub data
+- [x] Explicit data freshness indicators
+- [x] GitHub upstream outage/degraded-state UX
 
 **Phase 3 exit criteria:** an unauthenticated visitor can perform real GitHub discovery, inspect evidence-backed engineer intelligence, explore a real relationship network, filter/export results, and understand freshness and limitations without accessing private data.
+
+> **Validation gate:** Phase 3 implementation is complete on `feature/public-platform-foundation`. The remaining gate is the full local compile/test/browser validation pass; no deployment is implied by this status.
 
 ### Phase 4 — Intelligence Layer
 **Status: COMPLETE CORE / EXTEND CAREFULLY**
@@ -242,7 +244,7 @@ Every feature must satisfy these rules:
 **AI contract:** offline remains the default. A remote provider is used only when explicitly configured and supplied with its required secret. No public visitor can silently cause an LLM request.
 
 ### Phase 5 — Production hardening
-**Status: IN PROGRESS**
+**Status: IMPLEMENTATION COMPLETE — VALIDATION GATE PENDING**
 
 #### 5A. Configuration
 - [ ] Production environment configuration
@@ -321,12 +323,12 @@ The product is designed as a public security-intelligence platform built on real
 | **Evidence-backed profiles** | Public repositories, organizations, activity and engineering signals |
 | **Security-domain intelligence** | Configurable domains, keywords and explainable scoring |
 | **Relationship intelligence** | Real repository/org/domain relationships, weights, centrality and communities |
-| **Interactive network analysis** | Filtering, node inspection, dragging and accessible fallback data |
+| **Interactive network analysis** | Filtering, zoom/pan, relationship-type filters, progressive rendering, rankings and accessible fallback data |
 | **Search exports** | CSV and JSON |
 | **Graph exports** | SVG and JSON |
-| **Local investigations** | Planned workspace for notes, evidence, tags and analyst workflow |
-| **Reports** | Planned Markdown, JSON and optional PDF export |
-| **Data freshness** | Planned source timestamps and degraded/upstream-state indicators |
+| **Local investigations** | Private API-key-protected workspace with evidence, notes, tags, status and bundle export |
+| **Reports** | Search, engineer and graph Markdown/JSON exports with source/timestamp/schema metadata; PDF remains optional |
+| **Data freshness** | Source timestamps, GitHub capacity visibility, retry UX and public-cache policy |
 | **API** | FastAPI with public/private boundaries and OpenAPI |
 | **Background jobs** | Durable queue with idempotency, retries and rate controls |
 | **Optional AI** | OpenAI/Anthropic behind explicit configuration |

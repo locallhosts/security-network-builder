@@ -141,7 +141,7 @@ async function search(){
   else d=await getJson(apiUrl("/api/users/search",params));
   state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults(); if(state.mode==="repos"){searchHistory.unshift({q,language:params.language||"",min_stars:params.min_stars||"0",sort:params.sort,owner:params.owner||"",topic:params.topic||"",at:new Date().toISOString()});sessionStorage.setItem("snb-search-history",JSON.stringify(searchHistory.slice(0,20)));renderHistory()}
   setStatus(state.results.length+" result(s) on page "+d.page+" · source "+(d.source||"github")+" · fetched "+new Date(d.generated_at).toLocaleTimeString(),"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit;$("#export-results").disabled=!state.results.length;$("#export-json").disabled=!state.results.length;$("#export-markdown").disabled=!state.results.length;
- }catch(e){clear($("#results"));$("#results").appendChild(el("div",{class:"empty"},e.message));setStatus(e.message,"error");$("#export-results").disabled=true;$("#export-json").disabled=true}
+ }catch(e){clear($("#results"));$("#results").appendChild(el("div",{class:"empty"},e.message));setStatus("");$("#status").appendChild(el("span",{},"Search failed · "));$("#status").appendChild(el("button",{class:"btn primary",onclick:()=>search()},"Retry"));$("#status").className="status error";$("#export-results").disabled=true;$("#export-json").disabled=true;$("#export-markdown").disabled=true}
 }
 async function page(delta){
  const target=state.page+delta;if(target<1||!state.query)return;state.page=target;setStatus("Loading page "+target+"…");$("#prev").disabled=$("#next").disabled=true;

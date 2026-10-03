@@ -139,7 +139,7 @@ async function search(){
   if(state.mode==="repos"){params.language=$("#language").value;params.min_stars=$("#min-stars").value;params.owner=$("#owner").value.trim();params.topic=$("#topic").value.trim();params.archived=$("#archived").value;params.fork=$("#fork").value;d=await getJson(apiUrl("/api/search",params))}
   else d=await getJson(apiUrl("/api/users/search",params));
   state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults(); if(state.mode==="repos"){searchHistory.unshift({q,language:params.language||"",min_stars:params.min_stars||"0",sort:params.sort,owner:params.owner||"",topic:params.topic||"",at:new Date().toISOString()});sessionStorage.setItem("snb-search-history",JSON.stringify(searchHistory.slice(0,20)));renderHistory()}
-  setStatus(state.results.length+" result(s) on page "+d.page,"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit;$("#export-results").disabled=!state.results.length;$("#export-json").disabled=!state.results.length;$("#export-markdown").disabled=!state.results.length;
+  setStatus(state.results.length+" result(s) on page "+d.page+" · source "+(d.source||"github")+" · fetched "+new Date(d.generated_at).toLocaleTimeString(),"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit;$("#export-results").disabled=!state.results.length;$("#export-json").disabled=!state.results.length;$("#export-markdown").disabled=!state.results.length;
  }catch(e){clear($("#results"));$("#results").appendChild(el("div",{class:"empty"},e.message));setStatus(e.message,"error");$("#export-results").disabled=true;$("#export-json").disabled=true}
 }
 async function page(delta){
@@ -148,7 +148,7 @@ async function page(delta){
   const params={q:state.query,limit:state.limit,page:target,sort:state.sort};let d;
   if(state.mode==="repos"){params.language=$("#language").value;params.min_stars=$("#min-stars").value;params.owner=$("#owner").value.trim();params.topic=$("#topic").value.trim();params.archived=$("#archived").value;params.fork=$("#fork").value;d=await getJson(apiUrl("/api/search",params))}
   else d=await getJson(apiUrl("/api/users/search",params));
-  state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults();setStatus(state.results.length+" result(s) on page "+d.page,"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit
+  state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults();setStatus(state.results.length+" result(s) on page "+d.page+" · source "+(d.source||"github")+" · fetched "+new Date(d.generated_at).toLocaleTimeString(),"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit
  }catch(e){state.page=Math.max(1,target-delta);setStatus(e.message,"error");$("#prev").disabled=state.page<=1}
 }
 async function loadEngineer(login){

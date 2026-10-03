@@ -55,7 +55,7 @@ def test_security_headers_and_github_url_validation(monkeypatch):
     assert response.json()["results"][1]["url"] is None
     assert response.headers["X-Content-Type-Options"] == "nosniff"
     assert response.headers["X-Frame-Options"] == "DENY"
-    assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["Cache-Control"].startswith("public, max-age=30")
 
 
 def test_search_validates_query_and_limit():
@@ -243,7 +243,9 @@ def test_graph_response_contract_handles_missing_run(monkeypatch):
     monkeypatch.setattr("snb.api.app.get_history", lambda: EmptyHistory())
     response = TestClient(app).get("/api/graph")
     assert response.status_code == 200
-    assert response.json() == {"nodes": [], "edges": [], "communities": []}
+    assert response.json()["nodes"] == []
+    assert response.json()["edges"] == []
+    assert response.json()["communities"] == []
 
 
 def test_public_web_ui_exposes_secure_search_controls():
@@ -288,6 +290,7 @@ def test_public_engineer_profile_is_sanitized_and_public(monkeypatch):
                 "stargazers_count": "5",
                 "language": "Go",
                 "html_url": "https://github.com/alice/secure-tool",
+                "pushed_at": "2026-09-20T00:00:00Z",
             },
         ],
     )
@@ -476,3 +479,51 @@ def test_public_web_ui_has_export_and_graph_controls():
     assert 'id="download-graph"' in response.text
     assert 'id="node-filter"' in response.text
     assert "--bg:#f7f9fc" in response.text
+
+
+def test_public_search_exposes_freshness_and_advanced_filters(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(
+        "snb.api.app.GitHubClient.search_repositories",
+        lambda self, query, per_page=30, page=1, sort="stars": (seen.update(query=query) or []),
+    )
+    response = TestClient(app).get("/api/search?q=security&owner=alice&topic=ebpf&archived=false&fork=false")
+    assert response.status_code == 200
+    assert "user:alice" in seen["query"]
+    assert "topic:ebpf" in seen["query"]
+    assert "archived:false" in seen["query"]
+    assert response.json()["source"] == "github"
+    assert response.json()["generated_at"]
+
+
+def test_graph_filters_are_server_validated():
+    assert TestClient(app).get("/api/graph?edge_type=invalid").status_code == 422
+    assert TestClient(app).get("/api/graph?min_centrality=1.5").status_code == 422
+
+
+def test_workspace_is_private_and_supports_timeline_export(monkeypatch, tmp_path):
+    monkeypatch.setenv("API_KEY", "secret")
+    monkeypatch.setenv("SNB_WORKSPACE_DB", str(tmp_path / "workspace.db"))
+    client = TestClient(app)
+    created = client.post("/api/workspaces", headers={"X-API-Key": "secret"}, json={"title": "Research"})
+    assert created.status_code == 201
+    wid = created.json()["id"]
+    assert client.post(f"/api/workspaces/{wid}/items", headers={"X-API-Key": "secret"}, json={"kind": "engineer", "value": "alice", "source_url": "https://github.com/alice"}).status_code == 200
+    assert client.post(f"/api/workspaces/{wid}/notes", headers={"X-API-Key": "secret"}, json={"body": "Review eBPF evidence"}).status_code == 200
+    data = client.get(f"/api/workspaces/{wid}", headers={"X-API-Key": "secret"}).json()
+    assert len(data["items"]) == 1
+    assert len(data["notes"]) == 1
+    assert [e["action"] for e in data["timeline"]] == ["created", "evidence_added", "note_added"]
+    bundle = client.get(f"/api/workspaces/{wid}/export", headers={"X-API-Key": "secret"})
+    assert bundle.status_code == 200
+    assert bundle.json()["schema_version"] == 1
+    assert "Review eBPF evidence" in bundle.text
+    assert client.get(f"/api/workspaces/{wid}").status_code == 401
+
+
+def test_public_engineer_compare_contract(monkeypatch):
+    monkeypatch.setattr("snb.api.app.GitHubClient.get_user", lambda self, login: {"login": login, "name": login, "html_url": f"https://github.com/{login}"})
+    monkeypatch.setattr("snb.api.app.GitHubClient.list_user_repos", lambda self, login, limit=100: [{"name": "security-tool", "description": "runtime security", "topics": ["runtime-security"], "stargazers_count": 5, "language": "Go", "pushed_at": "2026-10-01T00:00:00Z", "html_url": f"https://github.com/{login}/security-tool"}])
+    compare = TestClient(app).get("/api/public/engineers/compare?first=alice&second=bob")
+    assert compare.status_code == 200
+    assert len(compare.json()["profiles"]) == 2

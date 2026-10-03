@@ -128,14 +128,15 @@ Goal: make the API useful through a professional web experience.
    - [~] Public engineer profile page and sanitized API
    - [ ] Score and domain breakdown
    - [x] Matching public repositories
-   - [ ] Activity/history view
-   - [ ] Organization and relationship context
+   - [x] Public GitHub activity view
+   - [x] Public organization context
+   - [ ] Local analysis/history integration
 
 9. **Graph visualization**
    - [~] Interactive relationship graph foundation
-   - [ ] Node/edge filtering
-   - [ ] Community/domain views
-   - [ ] Relationship details
+   - [x] Node/edge filtering
+   - [x] Community/domain views
+   - [x] Relationship details
    - [x] Accessible non-graph fallback
    - [ ] Larger-graph performance testing
 

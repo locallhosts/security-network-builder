@@ -673,13 +673,39 @@ def delete_workspace(workspace_id: str, x_api_key: str | None = Header(default=N
 
 
 @app.get("/api/graph", response_model=GraphResponse, tags=["public"])
-def graph() -> GraphResponse:
-    """Return only the latest run's relationship graph, without triage notes."""
+def graph(
+    community: int | None = Query(default=None, ge=0, le=10000),
+    min_centrality: float = Query(default=0, ge=0, le=1),
+    edge_type: str | None = Query(default=None, pattern="^(contributor|organization|domain)$"),
+    node_type: str = Query(default="engineer", pattern="^engineer$"),
+    max_nodes: int = Query(default=250, ge=1, le=500),
+) -> GraphResponse:
+    """Return a deterministic filtered graph snapshot from the latest public run."""
     h = get_history()
     run_id = h.latest_run_id()
+    filters = {"community": community, "min_centrality": min_centrality, "edge_type": edge_type, "node_type": node_type, "max_nodes": max_nodes}
+    generated_at = datetime.now(timezone.utc).isoformat()
     if run_id is None:
-        return GraphResponse(nodes=[], edges=[], communities=[])
+        return GraphResponse(nodes=[], edges=[], communities=[], generated_at=generated_at, filters=filters)
     data = h.get_run(run_id)
     if not data:
-        return GraphResponse(nodes=[], edges=[], communities=[])
-    return GraphResponse.model_validate(data.get("graph", {"nodes": [], "edges": [], "communities": []}))
+        return GraphResponse(nodes=[], edges=[], communities=[], generated_at=generated_at, filters=filters)
+    raw = data.get("graph", {"nodes": [], "edges": [], "communities": []})
+    nodes = [n for n in raw.get("nodes", []) if float(n.get("centrality", 0)) >= min_centrality and (community is None or n.get("community") == community)]
+    nodes.sort(key=lambda n: (-float(n.get("centrality", 0)), -float(n.get("score", 0)), str(n.get("login", "")).lower()))
+    nodes = nodes[:max_nodes]
+    allowed = {n.get("login") for n in nodes}
+    edges = []
+    for edge in raw.get("edges", []):
+        if edge.get("a") not in allowed or edge.get("b") not in allowed:
+            continue
+        reasons = [str(x) for x in (edge.get("reasons") or [])]
+        if edge_type == "contributor" and not any(x.startswith("both contribute") for x in reasons):
+            continue
+        if edge_type == "organization" and not any(x.startswith("both in org") for x in reasons):
+            continue
+        if edge_type == "domain" and not any("shared domains" in x for x in reasons):
+            continue
+        edges.append(edge)
+    communities = [c for c in raw.get("communities", []) if any(m in allowed for m in c.get("members", []))]
+    return GraphResponse(nodes=nodes, edges=edges, communities=communities, generated_at=generated_at, filters=filters)

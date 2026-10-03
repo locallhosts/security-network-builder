@@ -15,7 +15,7 @@ dependencies = ["requests>=2.31", "PyYAML>=6.0", "fastapi>=0.115", "uvicorn[stan
 postgres = ["psycopg[binary]>=3.2,<4"]
 
 
-dev = ["pytest>=7.0", "httpx>=0.27"]
+dev = ["pytest>=7.0", "httpx>=0.27", "pip-audit>=2.7"]
 
 [project.scripts]
 snb = "snb.main:main"

@@ -13,6 +13,7 @@ Discover, analyze, and rank engineers on GitHub by cybersecurity specialization,
 ## Table of Contents
 
 - [Overview](#overview)
+- [Implementation Roadmap](#implementation-roadmap)
 - [Key Features](#key-features)
 - [Quick Start](#quick-start)
 - [Usage](#usage)
@@ -51,6 +52,53 @@ GitHub holds strong signals of real engineering work: repositories, topics, lang
 - **Explainable.** Every point in a score is itemized and backed by evidence.
 - **Read-only.** The tool never follows, stars, or messages anyone. Outreach is always your own decision.
 - **Local-first.** Data stays on your machine; the optional AI features are opt-in.
+
+---
+
+## Implementation Roadmap
+
+This roadmap is the project's build sequence. **Do not deploy the production service until the implementation phases below are complete and the local test/Docker validation is green.** Keep this section updated as work progresses so the project history and remaining work are visible to contributors and users.
+
+### Phase 1 — Foundation
+
+- [x] Core discovery and scoring foundation
+- [x] Security profile and configurable domains
+- [x] GitHub REST/GraphQL data collection
+- [x] Explainable scoring and relationship graph foundation
+- [x] Local history and reporting
+- [x] Local dashboard foundation
+
+### Phase 2 — API
+
+4. **FastAPI application**
+5. **API routes**
+6. **API tests**
+
+### Phase 3 — Web Platform
+
+7. **Search UI**
+8. **Engineer profiles**
+9. **Graph visualization**
+
+### Phase 4 — Intelligence Layer
+
+10. **OpenAI integration**
+11. **Anthropic integration**
+12. **Background discovery jobs**
+
+### Phase 5 — Production
+
+13. **PostgreSQL**
+14. **API authentication**
+15. **CI/CD deployment**
+
+### Completion rule
+
+The implementation order is intentional:
+
+**Foundation → API → Web Platform → Intelligence → Production**
+
+Production deployment is the final phase. Until Phases 2–5 are complete, changes should be developed and validated locally first. The README roadmap is the source-of-truth checklist for the remaining implementation work.
 
 ---
 

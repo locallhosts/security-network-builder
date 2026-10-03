@@ -47,7 +47,9 @@ def test_org_summary_ranks_shared_orgs_first():
     assert summary[0]["login"] in {"cilium", "aws"} and len(summary[0]["members"]) == 2
     cilium = next(o for o in summary if o["login"] == "cilium")
     assert cilium["total_score"] == 55 and cilium["top_domains"][0] in {"eBPF", "Detection"}
-\n\ndef test_large_sparse_graph_uses_indexed_relationships():
+
+
+def test_large_sparse_graph_uses_indexed_relationships():
     recs = [rec(f"user{i}", 10 + i % 5, ["DomainA"] if i % 3 == 0 else ["DomainB"]) for i in range(600)]
     # Only the first 30 share an organization; the rest remain sparse.
     for r in recs[:30]:

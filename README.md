@@ -130,7 +130,7 @@ Goal: make the API useful through a professional web experience.
    - [x] Matching public repositories
    - [x] Public GitHub activity view
    - [x] Public organization context
-   - [ ] Local analysis/history integration
+   - [x] Local analysis/history integration (protected profile-aware analysis)
 
 9. **Graph visualization**
    - [~] Interactive relationship graph foundation

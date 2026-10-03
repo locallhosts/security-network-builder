@@ -759,6 +759,40 @@ def delete_workspace(workspace_id: str, x_api_key: str | None = Header(default=N
     return Response(status_code=204)
 
 
+@app.get("/api/public/engineers/compare", tags=["public"])
+def compare_engineers(
+    request: Request,
+    first: str = Query(..., min_length=1, max_length=39, pattern="^[A-Za-z0-9-]+$"),
+    second: str = Query(..., min_length=1, max_length=39, pattern="^[A-Za-z0-9-]+$"),
+) -> dict[str, Any]:
+    _check_search_rate(request)
+    if first.lower() == second.lower():
+        raise HTTPException(status_code=422, detail="compare two different engineers")
+    client = GitHubClient(load_settings().github_token)
+    profiles = []
+    for login in (first, second):
+        try:
+            profile = client.get_user(login)
+            repos = client.list_user_repos(login, limit=30)
+        except GitHubError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+        if not profile:
+            raise HTTPException(status_code=404, detail=f"engineer not found: {login}")
+        domains, skills, trends, signals = _public_engineer_intelligence(repos)
+        rec = score_candidate(login, repos, Profile.load())
+        profiles.append({
+            "login": login,
+            "name": profile.get("name"),
+            "score": None if rec is None else rec.score,
+            "domains": domains,
+            "skills": skills,
+            "trends": trends,
+            "repository_count": len(repos),
+            "top_repositories": signals[:10],
+        })
+    return {"schema_version": 1, "source": "github", "profiles": profiles}
+
+
 @app.get("/api/graph", response_model=GraphResponse, tags=["public"])
 def graph(
     community: int | None = Query(default=None, ge=0, le=10000),

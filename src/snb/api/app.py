@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi.responses import HTMLResponse
 
 from ..history import History
 from ..github_api import GitHubClient, GitHubError
 
 app = FastAPI(title="Security Network Builder API", version="1.0.0")
 DB_PATH = os.environ.get("SNB_HISTORY_DB", "data/history.db")
+PUBLIC_PAGE = (Path(__file__).with_name("index.html")).read_text(encoding="utf-8")
 
 
 def get_history() -> History:
@@ -22,6 +25,11 @@ def require_api_key(value: str | None) -> None:
     configured = os.environ.get("API_KEY")
     if configured and value != configured:
         raise HTTPException(status_code=401, detail="invalid API key")
+
+
+@app.get("/", response_class=HTMLResponse)
+def home() -> HTMLResponse:
+    return HTMLResponse(PUBLIC_PAGE)
 
 
 @app.get("/api/health")

@@ -221,6 +221,16 @@ def main(argv: list[str] | None = None) -> int:
         return history_cli.main(rest)
     if command == "profile-suggest":
         return profile_suggest(rest)
+    if command == "worker":
+        from .worker import run_worker
+        p = argparse.ArgumentParser(prog="snb worker")
+        p.add_argument("--jobs-db", default=os.environ.get("SNB_JOBS_DB", "data/jobs.db"))
+        p.add_argument("--max-jobs", type=int, default=1)
+        args = p.parse_args(rest)
+        results = run_worker(jobs_db=args.jobs_db, max_jobs=args.max_jobs)
+        for job in results:
+            print(f"{job.id} [{job.kind}] {job.status}")
+        return 0
     if command == "run":
         return run(parse_args(rest))
     print(f"Unknown command '{command}'. Use: run, dashboard, history, profile-suggest", file=sys.stderr)

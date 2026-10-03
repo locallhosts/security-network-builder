@@ -101,3 +101,15 @@ def test_search_passes_page_to_github():
     assert c.search_repositories("q", per_page=10, page=3) == [{"id": 1}]
     assert c.session.last_params["page"] == 3
     assert c.session.last_params["per_page"] == 10
+
+
+def test_transient_server_error_retries_with_exponential_backoff():
+    c, sleeps = client([Resp(503, text="busy"), Resp(200, {"login": "alice"})])
+    assert c.get_user("alice")["login"] == "alice"
+    assert sleeps == [1]
+
+
+def test_rate_limit_reset_header_is_bounded():
+    c, _ = client([Resp(403, headers={"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "9999999999"})])
+    with pytest.raises(RateLimitError):
+        c.get_user("alice")

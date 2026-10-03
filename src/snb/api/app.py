@@ -22,6 +22,7 @@ from ..config import Profile
 from ..github_api import GitHubClient, GitHubError
 from ..history import History
 from ..jobs import JobQueue
+from ..readiness import readiness
 from ..scoring import score_candidate
 
 app = FastAPI(
@@ -209,6 +210,11 @@ async def security_headers(request: Request, call_next: Any) -> Any:
 @app.get("/", response_class=HTMLResponse)
 def home() -> HTMLResponse:
     return HTMLResponse(PUBLIC_PAGE)
+
+
+@app.get("/api/readiness", tags=["public"])
+def readiness_endpoint() -> dict[str, Any]:
+    return readiness()
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["public"])

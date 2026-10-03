@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+from datetime import datetime, timezone
 import secrets
 import time
 from collections import defaultdict, deque
@@ -151,6 +152,10 @@ class PublicEngineerProfile(BaseModel):
     repositories: list[PublicRepository]
     organizations: list[str]
     activity: list[dict[str, str | None]]
+    security_domains: list[str]
+    skills: list[str]
+    contribution_trends: dict[str, int]
+    repository_signals: list[dict[str, Any]]
 
 
 def _nonnegative_int(value: Any) -> int:
@@ -170,6 +175,79 @@ def _public_github_url(value: Any) -> str | None:
     if parsed.scheme != "https" or parsed.hostname not in {"github.com", "www.github.com"}:
         return None
     return value
+
+
+def _parse_github_timestamp(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
+def _public_engineer_intelligence(repositories: list[dict[str, Any]]) -> tuple[list[str], list[str], dict[str, int], list[dict[str, Any]]]:
+    """Derive deterministic, public-data-only intelligence from repository metadata."""
+    profile = Profile.load()
+    domain_hits: dict[str, set[str]] = {}
+    skills: set[str] = set()
+    trends = {"last_30_days": 0, "last_90_days": 0, "last_365_days": 0}
+    signals: list[dict[str, Any]] = []
+    now = datetime.now(timezone.utc)
+
+    for repo in repositories:
+        hits = profile.match_repo(repo)
+        for key in hits:
+            domain = next((d for d in profile.domains if d.key == key), None)
+            if domain:
+                domain_hits.setdefault(domain.label, set()).update(hits[key])
+
+        language = repo.get("language")
+        if isinstance(language, str) and language.strip():
+            skills.add(language.strip())
+        for keyword_set in hits.values():
+            skills.update(keyword_set)
+
+        pushed = _parse_github_timestamp(repo.get("pushed_at"))
+        age_days = None if pushed is None else max(0, (now - pushed).days)
+        if age_days is not None:
+            if age_days <= 30:
+                trends["last_30_days"] += 1
+            if age_days <= 90:
+                trends["last_90_days"] += 1
+            if age_days <= 365:
+                trends["last_365_days"] += 1
+
+        archived = bool(repo.get("archived", False))
+        fork = bool(repo.get("fork", False))
+        if archived:
+            maintenance = "archived"
+        elif age_days is None:
+            maintenance = "unknown"
+        elif age_days <= 90:
+            maintenance = "active"
+        elif age_days <= 365:
+            maintenance = "stale"
+        else:
+            maintenance = "inactive"
+
+        signals.append({
+            "name": str(repo.get("name") or ""),
+            "stars": _nonnegative_int(repo.get("stargazers_count")),
+            "forks": _nonnegative_int(repo.get("forks_count")),
+            "open_issues": _nonnegative_int(repo.get("open_issues_count")),
+            "archived": archived,
+            "fork": fork,
+            "pushed_at": repo.get("pushed_at"),
+            "maintenance": maintenance,
+            "security_domains": sorted(
+                next((d.label for d in profile.domains if d.key == key), key)
+                for key in hits
+            ),
+        })
+
+    signals.sort(key=lambda item: (-item["stars"], item["name"].lower()))
+    return sorted(domain_hits), sorted(skills, key=str.lower)[:40], trends, signals[:30]
 
 
 _SEARCH_WINDOW = 60.0
@@ -440,7 +518,7 @@ def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
         profile = client.get_user(login)
         if not profile:
             raise HTTPException(status_code=404, detail="engineer not found")
-        repositories = client.list_user_repos(login, limit=12)
+        repositories = client.list_user_repos(login, limit=30)
         organizations = client.list_user_orgs(login)
     except GitHubError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
@@ -465,6 +543,7 @@ def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
             }
         )
 
+    domains, skills, trends, repository_signals = _public_engineer_intelligence(repositories)
     return PublicEngineerProfile(
         login=login,
         name=profile.get("name"),
@@ -477,6 +556,10 @@ def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
         repositories=public_repositories,
         organizations=sorted(set(organizations)),
         activity=activity,
+        security_domains=domains,
+        skills=skills,
+        contribution_trends=trends,
+        repository_signals=repository_signals,
     )
 
 

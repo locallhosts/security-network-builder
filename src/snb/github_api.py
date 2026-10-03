@@ -121,16 +121,15 @@ class GitHubClient:
         page: int = 1,
     ) -> list[dict[str, Any]]:
         self._throttle_search()
-        data = self._request(
-            "/search/repositories",
-            {
-                "q": query,
-                "sort": sort,
-                "order": "desc",
-                "per_page": min(per_page, 100),
-                "page": max(page, 1),
-            },
-        )
+        params = {
+            "q": query,
+            "order": "desc",
+            "per_page": min(per_page, 100),
+            "page": max(page, 1),
+        }
+        if sort and sort != "best-match":
+            params["sort"] = sort
+        data = self._request("/search/repositories", params)
         return data.get("items", [])
 
     def search_users(

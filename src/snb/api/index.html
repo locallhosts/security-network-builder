@@ -20,7 +20,7 @@ button,input,select{font:inherit}button{cursor:pointer}.shell{width:min(1440px,c
 .pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px}.pagination .group{display:flex;gap:8px}
 .profile{background:#fbfdff;border:1px solid var(--line);border-radius:13px;padding:18px;margin-top:18px}.profile-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}.repo-list{display:grid;gap:8px}.repo-mini{padding:11px;border:1px solid var(--line);border-radius:9px;background:#fff}.repo-mini strong{display:block}
 .graph-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.graph-tools .field{min-width:150px}.graph-wrap{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#fff}.graph-wrap svg{display:block;width:100%;height:650px}.graph-bg{fill:#fff}.edge{stroke:#9aa9bb;opacity:.55}.edge.strong{stroke:#52739d}.node{cursor:pointer}.node circle{stroke:#fff;stroke-width:2;filter:drop-shadow(0 2px 3px rgba(0,0,0,.15))}.node text{font-size:11px;fill:#26364d;pointer-events:none}.node.selected circle{stroke:#1769e0;stroke-width:4}.graph-hint{position:absolute;right:12px;top:12px;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:8px;padding:8px;color:var(--muted);font-size:11px}
-.graph-bottom{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}.data-box{border:1px solid var(--line);border-radius:10px;padding:13px;background:#fbfdff}.data-box h3{margin:0 0 8px;font-size:13px}.fallback{max-height:240px;overflow:auto;margin:0;padding-left:18px}.empty{padding:35px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
+.graph-bottom{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}.data-box{border:1px solid var(--line);border-radius:10px;padding:13px;background:#fbfdff}.data-box h3{margin:0 0 8px;font-size:13px}.fallback{max-height:240px;overflow:auto;margin:0;padding-left:18px}.skeleton{height:110px;border-radius:12px;background:linear-gradient(90deg,#f2f5f9 25%,#e7edf5 50%,#f2f5f9 75%);background-size:200% 100%;animation:skeleton 1.2s infinite}@keyframes skeleton{to{background-position:-200% 0}}.empty{padding:35px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
 footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 @media(max-width:1000px){.hero{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr 1fr}.toolbar .field:first-child{grid-column:1/-1}.results{grid-template-columns:1fr}.profile-grid,.graph-bottom{grid-template-columns:1fr}}
@@ -133,7 +133,7 @@ function renderUserResults(){
 }
 async function search(){
  const q=state.mode==="repos"?$("#q").value.trim():$("#uq").value.trim();if(q.length<2)return;
- state.query=q;state.page=1;state.sort=state.mode==="repos"?$("#repo-sort").value:$("#user-sort").value;setStatus("Searching…");$("#prev").disabled=$("#next").disabled=true;
+ state.query=q;state.page=1;state.sort=state.mode==="repos"?$("#repo-sort").value:$("#user-sort").value;setStatus("Searching…");clear($("#results"));for(let i=0;i<4;i++)$("#results").appendChild(el("div",{class:"skeleton","aria-hidden":"true"}));$("#prev").disabled=$("#next").disabled=true;
  try{
   const params={q,limit:state.limit,page:state.page,sort:state.sort};
   let d;

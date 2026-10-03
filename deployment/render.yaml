@@ -19,5 +19,7 @@ services:
         sync: false
       - key: ANTHROPIC_MODEL
         value: claude-sonnet-4-5
-      - key: API_KEY
+      - key: API_KEYS
         sync: false
+      - key: SNB_ENV
+        value: production

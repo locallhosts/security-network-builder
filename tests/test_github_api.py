@@ -113,3 +113,11 @@ def test_rate_limit_reset_header_is_bounded():
     c, _ = client([Resp(403, headers={"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "9999999999"})])
     with pytest.raises(RateLimitError):
         c.get_user("alice")
+
+
+def test_search_users_passes_sort_and_page():
+    c, _ = client([Resp(200, {"items": [{"login": "alice"}]})])
+    assert c.search_users("security", per_page=12, sort="repositories", page=3) == [{"login": "alice"}]
+    assert c.session.last_params["sort"] == "repositories"
+    assert c.session.last_params["page"] == 3
+    assert c.session.last_params["per_page"] == 12

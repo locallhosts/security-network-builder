@@ -92,6 +92,25 @@ class SearchResponse(BaseModel):
     results: list[SearchResult]
 
 
+class UserSearchResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    login: str
+    name: str | None
+    avatar_url: str | None
+    followers: int = Field(ge=0)
+    public_repos: int = Field(ge=0)
+    type: str
+    url: str | None
+
+
+class UserSearchResponse(BaseModel):
+    query: str
+    page: int = Field(ge=1)
+    limit: int = Field(ge=1, le=30)
+    results: list[UserSearchResult]
+
+
 class GraphResponse(BaseModel):
     nodes: list[dict[str, Any]]
     edges: list[dict[str, Any]]
@@ -233,12 +252,20 @@ def search(
     q: str = Query(..., min_length=2, max_length=100),
     limit: int = Query(10, ge=1, le=30),
     page: int = Query(1, ge=1, le=34),
+    language: str | None = Query(default=None, max_length=40),
+    min_stars: int = Query(0, ge=0, le=1_000_000),
+    sort: str = Query("stars", pattern="^(stars|forks|updated|help-wanted-issues|best-match)$"),
 ) -> SearchResponse:
     """Search public GitHub repositories. No private API key is exposed to browsers."""
     _check_search_rate(request)
     client = GitHubClient(load_settings().github_token)
+    search_query = q.strip()
+    if language:
+        search_query += f" language:{language.strip()}"
+    if min_stars:
+        search_query += f" stars:>={min_stars}"
     try:
-        items = client.search_repositories(q, per_page=limit, page=page)
+        items = client.search_repositories(search_query, per_page=limit, page=page, sort=sort)
     except GitHubError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     results = []
@@ -363,6 +390,42 @@ def engineer_analysis(login: str, x_api_key: str | None = Header(default=None)) 
         "matched_repositories": recommendation.matched_repos,
         "history": history,
     }
+
+
+@app.get("/api/users/search", response_model=UserSearchResponse, tags=["public"])
+def search_users(
+    request: Request,
+    q: str = Query(..., min_length=2, max_length=100),
+    limit: int = Query(10, ge=1, le=30),
+    page: int = Query(1, ge=1, le=34),
+    sort: str = Query("followers", pattern="^(followers|repositories|joined)$"),
+) -> UserSearchResponse:
+    """Search public GitHub users without exposing credentials to the browser."""
+    _check_search_rate(request)
+    client = GitHubClient(load_settings().github_token)
+    try:
+        items = client.search_users(q.strip(), per_page=limit, page=page, sort=sort)
+    except GitHubError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    results = []
+    for item in items:
+        login = str(item.get("login") or "")
+        if not re.fullmatch(r"[A-Za-z0-9-]{1,39}", login):
+            continue
+        avatar = item.get("avatar_url")
+        results.append(
+            UserSearchResult(
+                login=login,
+                name=None,
+                avatar_url=avatar if isinstance(avatar, str) and avatar.startswith("https://avatars.githubusercontent.com/") else None,
+                followers=_nonnegative_int(item.get("followers")),
+                public_repos=_nonnegative_int(item.get("public_repos")),
+                type=str(item.get("type") or "User"),
+                url=_public_github_url(item.get("html_url")),
+            )
+        )
+    return UserSearchResponse(query=q, page=page, limit=limit, results=results)
 
 
 @app.get("/api/public/engineers/{login}", response_model=PublicEngineerProfile, tags=["public"])

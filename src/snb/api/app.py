@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import FastAPI, Header, HTTPException, Query
 
 from ..history import History
+from ..github_api import GitHubClient, GitHubError
 
 app = FastAPI(title="Security Network Builder API", version="1.0.0")
 DB_PATH = os.environ.get("SNB_HISTORY_DB", "data/history.db")
@@ -27,6 +28,20 @@ def require_api_key(value: str | None) -> None:
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "security-network-builder"}
 
+
+@app.get("/api/search")
+def search(q: str = Query(..., min_length=2, max_length=100), limit: int = Query(10, ge=1, le=30), x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    require_api_key(x_api_key)
+    client = GitHubClient(os.environ.get("GITHUB_TOKEN") or None)
+    try:
+        items = client.search_repositories(q, per_page=limit)
+    except GitHubError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    results = []
+    for item in items:
+        owner = item.get("owner") or {}
+        results.append({"repository": item.get("full_name"), "description": item.get("description"), "stars": item.get("stargazers_count", 0), "language": item.get("language"), "owner": owner.get("login"), "url": item.get("html_url")})
+    return {"query": q, "results": results}
 
 @app.get("/api/runs")
 def runs(limit: int = Query(20, ge=1, le=100), x_api_key: str | None = Header(default=None)) -> dict[str, Any]:

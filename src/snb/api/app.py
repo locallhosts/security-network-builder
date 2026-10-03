@@ -399,7 +399,7 @@ def search(
     topic: str | None = Query(default=None, max_length=50),
     archived: bool | None = Query(default=None),
     fork: bool | None = Query(default=None),
-    response: Response = None,
+    response: Response,
 ) -> SearchResponse:
     """Search public GitHub repositories. No private API key is exposed to browsers."""
     _check_search_rate(request)

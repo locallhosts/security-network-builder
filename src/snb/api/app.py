@@ -94,6 +94,8 @@ class SearchResponse(BaseModel):
     page: int = Field(ge=1)
     limit: int = Field(ge=1, le=30)
     results: list[SearchResult]
+    source: str = "github"
+    generated_at: str
 
 
 class UserSearchResult(BaseModel):
@@ -113,6 +115,8 @@ class UserSearchResponse(BaseModel):
     page: int = Field(ge=1)
     limit: int = Field(ge=1, le=30)
     results: list[UserSearchResult]
+    source: str = "github"
+    generated_at: str
 
 
 class GraphResponse(BaseModel):
@@ -442,7 +446,7 @@ def search(
             if header in client.last_headers:
                 response.headers[header] = client.last_headers[header]
         response.headers["X-Data-Source"] = "github"
-    return SearchResponse(query=q, page=page, limit=limit, results=results)
+    return SearchResponse(query=q, page=page, limit=limit, results=results, generated_at=datetime.now(timezone.utc).isoformat())
 
 
 @app.post("/api/jobs", response_model=JobResponse, status_code=202, tags=["private"])
@@ -584,7 +588,7 @@ def search_users(
                 url=_public_github_url(item.get("html_url")),
             )
         )
-    return UserSearchResponse(query=q, page=page, limit=limit, results=results)
+    return UserSearchResponse(query=q, page=page, limit=limit, results=results, generated_at=datetime.now(timezone.utc).isoformat())
 
 
 @app.get("/api/public/engineers/{login}", response_model=PublicEngineerProfile, tags=["public"])

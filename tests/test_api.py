@@ -320,7 +320,9 @@ def test_public_web_ui_exposes_profile_and_graph_controls():
     assert 'id="apply-graph"' in response.text
     assert "loadEngineer(n.login)" in response.text
     assert "Relationship details" in response.text
-\n\ndef test_private_engineer_analysis_returns_score_breakdown_and_history(monkeypatch):
+
+
+def test_private_engineer_analysis_returns_score_breakdown_and_history(monkeypatch):
     monkeypatch.setenv("API_KEY", "secret")
     monkeypatch.setattr(
         "snb.api.app.GitHubClient.get_user",

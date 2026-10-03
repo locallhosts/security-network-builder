@@ -30,3 +30,11 @@ def test_worker_handles_missing_handler():
     result = q.run_once({})
     assert result and result.status == "queued"
     assert q.get(job.id).attempts == 1
+
+
+def test_worker_persists_result():
+    q = JobQueue(":memory:")
+    job = q.enqueue("demo", {"x": 1})
+    result = q.run_once({"demo": lambda payload: "completed"})
+    assert result and result.status == "succeeded"
+    assert q.get(job.id).result == "completed"

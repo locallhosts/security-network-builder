@@ -739,6 +739,16 @@ def add_workspace_note(workspace_id: str, payload: WorkspaceNote, x_api_key: str
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+@app.get("/api/workspaces/{workspace_id}/export", tags=["private"])
+def export_workspace(workspace_id: str, x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    require_api_key(x_api_key)
+    try:
+        data = get_workspaces().get(workspace_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="workspace not found") from exc
+    return {"schema_version": 1, "exported_at": datetime.now(timezone.utc).isoformat(), "workspace": data}
+
+
 @app.delete("/api/workspaces/{workspace_id}", status_code=204, tags=["private"])
 def delete_workspace(workspace_id: str, x_api_key: str | None = Header(default=None)) -> Response:
     require_api_key(x_api_key)

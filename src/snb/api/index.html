@@ -121,7 +121,7 @@ function renderUserResults(){
  clear($("#results"));const items=state.results;
  if(!items.length){$("#results").appendChild(el("div",{class:"empty"},"No engineers found. Try a skill, company, or username."));return}
  items.forEach(item=>{
-  const avatar=item.avatar_url?el("img",{class:"avatar",src:item.avatar_url,alt:""}):el("div",{class:"avatar"});
+  const avatar=el("div",{class:"avatar",text:(item.login||"?").slice(0,2).toUpperCase()});
   const card=el("article",{class:"result user-card"},avatar,el("div",{class:"body"},
     el("div",{class:"result-top"},el("h3",{},el("a",{href:item.url||"#",target:"_blank",rel:"noopener noreferrer"},"@"+item.login)),el("span",{class:"chip"},item.type)),
     el("div",{class:"meta"},Number(item.followers||0).toLocaleString()+" followers · "+Number(item.public_repos||0).toLocaleString()+" public repos"),

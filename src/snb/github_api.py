@@ -113,11 +113,23 @@ class GitHubClient:
         self._last_search = time.monotonic()
 
     # -- REST ----------------------------------------------------------
-    def search_repositories(self, query: str, per_page: int = 30, sort: str = "stars") -> list[dict[str, Any]]:
+    def search_repositories(
+        self,
+        query: str,
+        per_page: int = 30,
+        sort: str = "stars",
+        page: int = 1,
+    ) -> list[dict[str, Any]]:
         self._throttle_search()
         data = self._request(
             "/search/repositories",
-            {"q": query, "sort": sort, "order": "desc", "per_page": min(per_page, 100)},
+            {
+                "q": query,
+                "sort": sort,
+                "order": "desc",
+                "per_page": min(per_page, 100),
+                "page": max(page, 1),
+            },
         )
         return data.get("items", [])
 

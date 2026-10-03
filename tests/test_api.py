@@ -178,6 +178,7 @@ def test_openapi_contract_exposes_public_and_private_routes():
     assert "/api/health" in paths
     assert "/api/search" in paths
     assert "/api/graph" in paths
+    assert "/api/public/engineers/{login}" in paths
     assert "/api/runs" in paths
     assert "/api/runs/latest" in paths
     assert "/api/runs/{run_id}" in paths

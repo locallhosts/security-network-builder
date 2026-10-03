@@ -63,6 +63,11 @@ summary{cursor:pointer;color:var(--accent)}.fallback-list{margin:12px 0 0;paddin
 <section class="card" aria-labelledby="graph-title">
 <h2 id="graph-title">Community security graph</h2>
 <p class="muted">Relationships from the latest local analysis: shared repositories, organizations, and security domains.</p>
+<div class="toolbar" style="grid-template-columns:180px 180px auto;margin:12px 0">
+<label>Community<select id="community"><option value="">All communities</option></select></label>
+<label>Minimum centrality<input id="centrality" type="number" min="0" max="1" step="0.05" value="0"></label>
+<button id="apply-graph" type="button">Apply graph filters</button>
+</div>
 <div class="legend"><span class="pill">node size = score</span><span class="pill">edge width = relationship strength</span></div>
 <div class="graph-wrap">
 <svg id="graph" viewBox="0 0 1000 500" role="img" aria-label="Security community graph"></svg>
@@ -76,6 +81,8 @@ summary{cursor:pointer;color:var(--accent)}.fallback-list{margin:12px 0 0;paddin
 
 <script>
 const state={query:'',page:1,limit:10,results:[]};
+const community=document.querySelector('#community'), centrality=document.querySelector('#centrality'), applyGraph=document.querySelector('#apply-graph');
+let graphState={nodes:[],edges:[],communities:[]};
 const q=document.querySelector('#q'), language=document.querySelector('#language'), minStars=document.querySelector('#min-stars');
 const form=document.querySelector('#search'), status=document.querySelector('#status'), results=document.querySelector('#results');
 const prev=document.querySelector('#prev'), next=document.querySelector('#next'), pageLabel=document.querySelector('#page-label');
@@ -179,18 +186,36 @@ async function loadGraph(){
  }catch(err){clear(svg);clear(fallback);const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x','20');t.setAttribute('y','35');t.setAttribute('fill','#94a3b8');text(t,err.message);svg.appendChild(t)}
 }
 function renderGraph(g,svg,fallback){
- clear(svg);clear(fallback);const nodes=Array.isArray(g.nodes)?g.nodes:[],edges=Array.isArray(g.edges)?g.edges:[],W=1000,H=500;
- if(!nodes.length){const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x','20');t.setAttribute('y','35');t.setAttribute('fill','#94a3b8');text(t,'No graph data yet. Run SNB locally and save a run.');svg.appendChild(t);return}
+ graphState=g;clear(community);
+ const all=document.createElement('option');all.value='';text(all,'All communities');community.appendChild(all);
+ (g.communities||[]).forEach(c=>{const o=document.createElement('option');o.value=String(c.id);text(o,'Community '+c.id+' ('+c.size+')');community.appendChild(o)});
+ drawGraph();
+}
+function drawGraph(){
+ const svg=document.querySelector('#graph'), fallback=document.querySelector('#graph-fallback');
+ clear(svg);clear(fallback);
+ const min=Number(centrality.value||0), selected=community.value;
+ const nodes=(graphState.nodes||[]).filter(n=>Number(n.centrality||0)>=min&&(!selected||String(n.community)===selected));
+ const allowed=new Set(nodes.map(n=>n.login));
+ const edges=(graphState.edges||[]).filter(e=>allowed.has(e.a)&&allowed.has(e.b));
+ const W=1000,H=500,ns='http://www.w3.org/2000/svg';
+ if(!nodes.length){const t=document.createElementNS(ns,'text');t.setAttribute('x','20');t.setAttribute('y','35');t.setAttribute('fill','#94a3b8');text(t,'No graph nodes match the current filters.');svg.appendChild(t);return}
  const positions={};nodes.forEach((n,i)=>{const a=2*Math.PI*i/nodes.length;positions[n.login]={x:W/2+Math.cos(a)*Math.min(360,120+nodes.length*18),y:H/2+Math.sin(a)*Math.min(170,80+nodes.length*8)}});
- const ns='http://www.w3.org/2000/svg';
- edges.forEach(e=>{if(!positions[e.a]||!positions[e.b])return;const line=document.createElementNS(ns,'line');line.setAttribute('x1',positions[e.a].x);line.setAttribute('y1',positions[e.a].y);line.setAttribute('x2',positions[e.b].x);line.setAttribute('y2',positions[e.b].y);line.setAttribute('stroke-width',Math.max(1,Math.min(8,Number(e.weight)||1)));line.classList.add('edge');svg.appendChild(line)});
+ edges.forEach(e=>{const a=positions[e.a],b=positions[e.b];if(!a||!b)return;const line=document.createElementNS(ns,'line');line.setAttribute('x1',a.x);line.setAttribute('y1',a.y);line.setAttribute('x2',b.x);line.setAttribute('y2',b.y);line.setAttribute('stroke-width',Math.max(1,Math.min(8,Number(e.weight)||1)));line.classList.add('edge');line.setAttribute('aria-label',e.reasons.join('; '));svg.appendChild(line)});
  nodes.forEach(n=>{
   const p=positions[n.login],group=document.createElementNS(ns,'g');group.classList.add('node');
-  const c=document.createElementNS(ns,'circle');c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);c.setAttribute('r',String(8+Math.min(18,Number(n.score||0)/5)));group.appendChild(c);
-  const t=document.createElementNS(ns,'text');t.setAttribute('x',p.x+13);t.setAttribute('y',p.y+4);text(t,'@'+(n.login||'unknown'));group.appendChild(t);svg.appendChild(group);
-  const li=document.createElement('li');text(li,'@'+(n.login||'unknown')+' — score '+Number(n.score||0));fallback.appendChild(li);
+  const circle=document.createElementNS(ns,'circle');circle.setAttribute('cx',p.x);circle.setAttribute('cy',p.y);circle.setAttribute('r',String(8+Math.min(18,Number(n.score||0)/5)));group.appendChild(circle);
+  const title=document.createElementNS(ns,'title');text(title,'@'+n.login+' · score '+Number(n.score||0)+' · centrality '+Number(n.centrality||0));group.appendChild(title);
+  const label=document.createElementNS(ns,'text');label.setAttribute('x',p.x+13);label.setAttribute('y',p.y+4);text(label,'@'+(n.login||'unknown'));group.appendChild(label);
+  group.addEventListener('click',()=>loadEngineer(n.login));svg.appendChild(group);
+  const li=document.createElement('li');text(li,'@'+(n.login||'unknown')+' — score '+Number(n.score||0)+' · centrality '+Number(n.centrality||0));fallback.appendChild(li);
  });
+ const details=document.createElement('details');const summary=document.createElement('summary');text(summary,'Relationship details');details.appendChild(summary);
+ edges.slice(0,30).forEach(e=>{const p=document.createElement('p');p.className='meta';text(p,'@'+e.a+' ↔ @'+e.b+' · weight '+Number(e.weight||0)+' · '+e.reasons.join('; '));details.appendChild(p)});
+ fallback.appendChild(details);
 }
+
+applyGraph.addEventListener('click',drawGraph);
 loadGraph();
 </script>
 </body>

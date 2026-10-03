@@ -181,3 +181,24 @@ def test_openapi_contract_exposes_public_and_private_routes():
     assert "/api/runs/latest" in paths
     assert "/api/runs/{run_id}" in paths
     assert "/api/engineers/{login}" in paths
+
+
+def test_public_response_models_are_exposed_in_openapi():
+    schema = TestClient(app).get("/openapi.json").json()
+    components = schema["components"]["schemas"]
+    assert "HealthResponse" in components
+    assert "SearchResponse" in components
+    assert "SearchResult" in components
+    assert "GraphResponse" in components
+
+
+def test_search_response_contract_rejects_unexpected_upstream_shape(monkeypatch):
+    monkeypatch.setattr(
+        "snb.api.app.GitHubClient.search_repositories",
+        lambda self, query, per_page=30: [
+            {"full_name": "acme/valid", "stargazers_count": 3, "html_url": "https://github.com/acme/valid"},
+            {"full_name": "acme/bad", "stargazers_count": "not-an-integer", "html_url": "https://github.com/acme/bad"},
+        ],
+    )
+    response = TestClient(app).get("/api/search?q=security")
+    assert response.status_code == 500

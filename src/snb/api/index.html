@@ -3,219 +3,221 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Security Network Builder — public security engineer discovery and community intelligence.">
+<meta name="description" content="Security Network Builder — public security engineering discovery and relationship intelligence.">
 <title>Security Network Builder</title>
 <style>
-:root{color-scheme:dark;--bg:#070b14;--panel:#0d1422;--panel2:#111b2d;--line:#243247;--text:#e7edf7;--muted:#8ea0b8;--accent:#7dd3fc;--good:#86efac}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#111d31 0,#070b14 42%);color:var(--text);font:15px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-main{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:44px 0 70px}
-header{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:28px}
-h1,h2,p{margin-top:0}h1{font-size:clamp(30px,5vw,48px);letter-spacing:-.04em;margin-bottom:8px}h2{font-size:20px;margin-bottom:8px}.muted{color:var(--muted)}
-.badge{display:inline-flex;align-items:center;border:1px solid #28506a;background:#0b1d2a;color:var(--accent);border-radius:999px;padding:5px 10px;font-size:12px}
-.card{background:color-mix(in srgb,var(--panel) 94%,transparent);border:1px solid var(--line);border-radius:18px;padding:22px;margin:18px 0;box-shadow:0 12px 40px #0003}
-.toolbar{display:grid;grid-template-columns:minmax(180px,1fr) 150px 130px auto;gap:10px;align-items:end}
-label{display:grid;gap:6px;color:var(--muted);font-size:12px}input,select,button{font:inherit;padding:11px 13px;border-radius:10px;border:1px solid #34445b;background:#0a1220;color:var(--text)}
-button{cursor:pointer;font-weight:650}button:hover{border-color:#5f7897}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.status{min-height:24px;margin:14px 0 4px}.error{color:#fda4af}.success{color:var(--good)}
-.results{display:grid;gap:10px}.result{border:1px solid var(--line);background:var(--panel2);border-radius:13px;padding:15px}
-.result-top{display:flex;justify-content:space-between;gap:12px}.repo{font-weight:700;color:var(--text)}a{color:var(--accent)}.meta{color:var(--muted);font-size:13px;margin-top:5px}
-.pagination{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px}.pagination button{min-width:90px}.pagination button:disabled{opacity:.45;cursor:not-allowed}
-.graph-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#060a12}.graph-wrap svg{display:block;width:100%;min-width:760px;height:500px}
-.node circle{stroke:#cbd5e1;stroke-width:1}.node text{font-size:12px;fill:var(--text)}.edge{stroke:#64748b;opacity:.55}
-.legend{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.pill{display:inline-block;padding:4px 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px}
-summary{cursor:pointer;color:var(--accent)}.fallback-list{margin:12px 0 0;padding-left:20px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media(max-width:760px){main{width:min(100% - 20px,1180px);padding-top:24px}header{display:block}.toolbar{grid-template-columns:1fr 1fr}.toolbar label:first-child{grid-column:1/-1}.toolbar button{grid-column:1/-1}}
+:root{--bg:#f7f9fc;--surface:#fff;--surface2:#f2f5f9;--line:#dbe2ea;--text:#172033;--muted:#617087;--accent:#1769e0;--accent2:#0f4fb8;--good:#15803d;--warn:#b45309;--danger:#b42318;--shadow:0 10px 35px rgba(31,45,61,.08)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}.shell{width:min(1440px,calc(100% - 40px));margin:auto}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.topbar-inner{height:68px;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:-.02em}.mark{width:34px;height:34px;border-radius:10px;background:var(--accent);display:grid;place-items:center;color:#fff;font-weight:900}.nav{display:flex;gap:6px}.nav a{color:var(--muted);text-decoration:none;padding:8px 10px;border-radius:8px}.nav a:hover{background:var(--surface2);color:var(--text)}
+.hero{padding:56px 0 34px;display:grid;grid-template-columns:1.5fr .8fr;gap:30px;align-items:end}.eyebrow{color:var(--accent);font-weight:750;text-transform:uppercase;letter-spacing:.1em;font-size:11px}.hero h1{font-size:clamp(34px,5vw,64px);line-height:1.02;letter-spacing:-.055em;margin:8px 0 14px}.hero p{font-size:17px;color:var(--muted);max-width:780px}.hero-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow)}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.metric b{display:block;font-size:25px}.metric span{color:var(--muted);font-size:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);margin:18px 0;padding:22px}.panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:18px}.panel h2{margin:0;font-size:21px;letter-spacing:-.025em}.muted{color:var(--muted)}.toolbar{display:grid;grid-template-columns:minmax(220px,1fr) 170px 150px 180px auto;gap:10px;align-items:end}.field{display:grid;gap:6px;color:var(--muted);font-size:12px;font-weight:650}.field input,.field select{width:100%;background:#fff;color:var(--text);border:1px solid #cbd5e1;border-radius:9px;padding:10px 11px;outline:none}.field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(23,105,224,.12)}
+.btn{border:1px solid #c8d2df;background:#fff;color:var(--text);border-radius:9px;padding:10px 13px;font-weight:700}.btn:hover{border-color:#9aa9bb;background:#f8fafc}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.primary:hover{background:var(--accent2)}.btn:disabled{opacity:.45;cursor:not-allowed}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:-2px -22px 18px;padding:0 22px}.tab{border:0;background:transparent;color:var(--muted);padding:12px 14px;border-bottom:2px solid transparent;font-weight:750}.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.status{min-height:22px;margin:13px 0;color:var(--muted)}.status.error{color:var(--danger)}.status.success{color:var(--good)}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.result{border:1px solid var(--line);border-radius:12px;padding:16px;background:#fff;transition:.15s}.result:hover{box-shadow:0 7px 22px rgba(31,45,61,.08);transform:translateY(-1px)}.result-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.result h3{margin:0;font-size:16px}.result h3 a,.result a{color:var(--accent);text-decoration:none}.result h3 a:hover,.result a:hover{text-decoration:underline}.meta{color:var(--muted);font-size:12px}.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}.chip{border:1px solid var(--line);background:var(--surface2);border-radius:999px;padding:3px 8px;color:var(--muted);font-size:11px}.avatar{width:42px;height:42px;border-radius:10px;background:#e8eef8;object-fit:cover}.user-card{display:grid;grid-template-columns:auto 1fr;gap:12px}.user-card .body{min-width:0}.user-actions{margin-top:12px;display:flex;gap:7px}
+.pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px}.pagination .group{display:flex;gap:8px}
+.profile{background:#fbfdff;border:1px solid var(--line);border-radius:13px;padding:18px;margin-top:18px}.profile-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}.repo-list{display:grid;gap:8px}.repo-mini{padding:11px;border:1px solid var(--line);border-radius:9px;background:#fff}.repo-mini strong{display:block}
+.graph-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.graph-tools .field{min-width:150px}.graph-wrap{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#fff}.graph-wrap svg{display:block;width:100%;height:650px}.graph-bg{fill:#fff}.edge{stroke:#9aa9bb;opacity:.55}.edge.strong{stroke:#52739d}.node{cursor:pointer}.node circle{stroke:#fff;stroke-width:2;filter:drop-shadow(0 2px 3px rgba(0,0,0,.15))}.node text{font-size:11px;fill:#26364d;pointer-events:none}.node.selected circle{stroke:#1769e0;stroke-width:4}.graph-hint{position:absolute;right:12px;top:12px;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:8px;padding:8px;color:var(--muted);font-size:11px}
+.graph-bottom{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}.data-box{border:1px solid var(--line);border-radius:10px;padding:13px;background:#fbfdff}.data-box h3{margin:0 0 8px;font-size:13px}.fallback{max-height:240px;overflow:auto;margin:0;padding-left:18px}.empty{padding:35px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
+footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+@media(max-width:1000px){.hero{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr 1fr}.toolbar .field:first-child{grid-column:1/-1}.results{grid-template-columns:1fr}.profile-grid,.graph-bottom{grid-template-columns:1fr}}
+@media(max-width:650px){.shell{width:min(100% - 20px,1440px)}.topbar-inner{height:auto;padding:12px 0}.nav{display:none}.toolbar{grid-template-columns:1fr}.toolbar .field:first-child{grid-column:auto}.hero{padding-top:35px}.panel{padding:16px}.tabs{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px}.graph-wrap svg{height:500px}}
 </style>
 </head>
 <body>
-<main>
-<header>
-<div>
-<span class="badge">PUBLIC · READ-ONLY</span>
-<h1>Security Network Builder</h1>
-<p class="muted">Security engineer discovery and community intelligence from public GitHub signals.</p>
-</div>
-</header>
+<div class="topbar"><div class="shell topbar-inner">
+<div class="brand"><span class="mark">SN</span><span>Security Network Builder</span></div>
+<nav class="nav"><a href="#search">Discovery</a><a href="#graph">Network</a><a href="#profile-card">Profiles</a><a href="/docs">API</a></nav>
+</div></div>
 
-<section class="card" aria-labelledby="search-title">
-<h2 id="search-title">Repository discovery</h2>
-<p class="muted">Search public GitHub repositories, then narrow the returned evidence by language and stars.</p>
-<form id="search" class="toolbar">
-<label>Query<input id="q" minlength="2" maxlength="100" autocomplete="off" placeholder="eBPF security, cloud security" required></label>
-<label>Language<select id="language"><option value="">Any language</option></select></label>
-<label>Minimum stars<input id="min-stars" type="number" min="0" max="1000000" value="0"></label>
-<button type="submit">Search</button>
+<main class="shell">
+<section class="hero">
+<div><div class="eyebrow">Security intelligence platform</div><h1>Find the people, projects and relationships behind security engineering.</h1><p>Search public GitHub repositories and engineers, inspect evidence, and explore the security community as an interactive network. Read-only, evidence-first, and designed for serious research.</p></div>
+<div class="hero-card"><div class="metrics"><div class="metric"><b id="metric-nodes">—</b><span>graph nodes</span></div><div class="metric"><b id="metric-edges">—</b><span>relationships</span></div><div class="metric"><b id="metric-communities">—</b><span>communities</span></div></div></div>
+</section>
+
+<section class="panel" id="search">
+<div class="panel-head"><div><h2>Discovery</h2><div class="muted">Search repositories or GitHub engineers using the public API.</div></div><div class="actions"><button class="btn" id="export-results" type="button" disabled>Export results</button></div></div>
+<div class="tabs"><button class="tab active" data-tab="repos">Repositories</button><button class="tab" data-tab="users">Engineers</button></div>
+
+<div id="repo-search">
+<form id="repo-form" class="toolbar">
+<label class="field">Search<input id="q" minlength="2" maxlength="100" autocomplete="off" placeholder="eBPF runtime security, cloud security" required></label>
+<label class="field">Language<select id="language"><option value="">Any language</option></select></label>
+<label class="field">Minimum stars<input id="min-stars" type="number" min="0" max="1000000" value="0"></label>
+<label class="field">Sort<select id="repo-sort"><option value="stars">Stars</option><option value="updated">Recently updated</option><option value="forks">Forks</option><option value="help-wanted-issues">Help wanted</option><option value="best-match">Best match</option></select></label>
+<button class="btn primary" type="submit">Search</button>
 </form>
-<div id="status" class="status muted" role="status" aria-live="polite"></div>
+</div>
+
+<div id="user-search" hidden>
+<form id="user-form" class="toolbar">
+<label class="field">Find an engineer<input id="uq" minlength="2" maxlength="100" autocomplete="off" placeholder="security engineer, kubernetes, red team" required></label>
+<div></div><div></div>
+<label class="field">Sort<select id="user-sort"><option value="followers">Followers</option><option value="repositories">Repositories</option><option value="joined">Joined</option></select></label>
+<button class="btn primary" type="submit">Search people</button>
+</form>
+</div>
+
+<div id="status" class="status" role="status" aria-live="polite"></div>
 <div id="results" class="results" aria-live="polite"></div>
-<nav class="pagination" aria-label="Search pagination">
-<button id="prev" type="button" disabled>Previous</button>
-<span id="page-label" class="muted">Page 1</span>
-<button id="next" type="button" disabled>Next</button>
-</nav>
+<div class="pagination"><span id="page-label" class="muted">Page 1</span><div class="group"><button class="btn" id="prev" type="button" disabled>Previous</button><button class="btn" id="next" type="button" disabled>Next</button></div></div>
 </section>
 
-<section class="card" id="profile-card" aria-labelledby="profile-title" hidden>
-<h2 id="profile-title">Engineer profile</h2>
-<div id="profile" aria-live="polite"></div>
+<section class="panel" id="profile-card" hidden>
+<div class="panel-head"><div><h2 id="profile-title">Engineer profile</h2><div class="muted">Public GitHub data and recent engineering evidence.</div></div><button class="btn" id="close-profile" type="button">Close</button></div>
+<div id="profile" class="profile"></div>
 </section>
 
-<section class="card" aria-labelledby="graph-title">
-<h2 id="graph-title">Community security graph</h2>
-<p class="muted">Relationships from the latest local analysis: shared repositories, organizations, and security domains.</p>
-<div class="toolbar" style="grid-template-columns:180px 180px auto;margin:12px 0">
-<label>Community<select id="community"><option value="">All communities</option></select></label>
-<label>Minimum centrality<input id="centrality" type="number" min="0" max="1" step="0.05" value="0"></label>
-<button id="apply-graph" type="button">Apply graph filters</button>
+<section class="panel" id="graph">
+<div class="panel-head"><div><h2>Security community network</h2><div class="muted">Explore relationship strength, communities, centrality and individual engineers.</div></div><div class="actions"><button class="btn" id="download-svg" type="button">Download SVG</button><button class="btn" id="download-graph" type="button">Download graph JSON</button></div></div>
+<div class="graph-tools">
+<label class="field">Community<select id="community"><option value="">All communities</option></select></label>
+<label class="field">Min centrality<input id="centrality" type="number" min="0" max="1" step=".05" value="0"></label>
+<label class="field">Find node<input id="node-filter" type="search" placeholder="@login"></label>
+<button class="btn" id="apply-graph" type="button">Apply</button><button class="btn" id="reset-graph" type="button">Reset view</button>
 </div>
-<div class="legend"><span class="pill">node size = score</span><span class="pill">edge width = relationship strength</span></div>
-<div class="graph-wrap">
-<svg id="graph" viewBox="0 0 1000 500" role="img" aria-label="Security community graph"></svg>
-</div>
-<details>
-<summary>Accessible graph data</summary>
-<ul id="graph-fallback" class="fallback-list"></ul>
-</details>
+<div class="status" id="graph-status" aria-live="polite"></div>
+<div class="graph-wrap"><svg id="graph-svg" viewBox="0 0 1200 650" role="img" aria-label="Interactive security community graph"></svg><div class="graph-hint">Scroll to zoom · drag nodes · click a node for profile</div></div>
+<div class="graph-bottom"><div class="data-box"><h3>Relationship details</h3><div id="edge-details" class="muted">Select a node to inspect its relationships.</div></div><div class="data-box"><h3>Accessible graph data</h3><ul id="graph-fallback" class="fallback"></ul></div></div>
 </section>
 </main>
+<footer class="shell">Security Network Builder · public, read-only GitHub discovery · GitHub content is treated as untrusted input.</footer>
 
 <script>
-const state={query:'',page:1,limit:10,results:[]};
-const community=document.querySelector('#community'), centrality=document.querySelector('#centrality'), applyGraph=document.querySelector('#apply-graph');
-let graphState={nodes:[],edges:[],communities:[]};
-const q=document.querySelector('#q'), language=document.querySelector('#language'), minStars=document.querySelector('#min-stars');
-const form=document.querySelector('#search'), status=document.querySelector('#status'), results=document.querySelector('#results');
-const prev=document.querySelector('#prev'), next=document.querySelector('#next'), pageLabel=document.querySelector('#page-label');
-
-function setStatus(message,type='muted'){status.textContent=message;status.className='status '+type}
+const state={mode:"repos",query:"",page:1,limit:12,results:[],sort:"stars"};
+let graphState={nodes:[],edges:[],communities:[]}, view={scale:1,tx:0,ty:0}, selectedNode=null;
+const $=s=>document.querySelector(s);
 function clear(el){while(el.firstChild)el.removeChild(el.firstChild)}
-function text(parent,value){parent.appendChild(document.createTextNode(String(value??'')))}
-function githubLink(url,label){
- if(typeof url!=='string'||!/^https:\/\/(www\.)?github\.com\//.test(url))return null;
- const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';text(a,label);return a;
-}
-function renderLanguageOptions(items){
- const values=[...new Set(items.map(x=>x.language).filter(Boolean))].sort();
- const current=language.value;clear(language);
- const any=document.createElement('option');any.value='';text(any,'Any language');language.appendChild(any);
- values.forEach(value=>{const o=document.createElement('option');o.value=value;text(o,value);language.appendChild(o)});
- language.value=values.includes(current)?current:'';
-}
-function renderResults(){
- clear(results);
- const min=Number(minStars.value||0), lang=language.value;
- const filtered=state.results.filter(x=>(!lang||x.language===lang)&&Number(x.stars||0)>=min);
- if(!filtered.length){const p=document.createElement('p');p.className='muted';text(p,'No repositories match the current filters.');results.appendChild(p)}
- filtered.forEach(item=>{
-  const article=document.createElement('article');article.className='result';
-  const top=document.createElement('div');top.className='result-top';
-  const title=document.createElement('span');title.className='repo';text(title,item.repository||'Unnamed repository');top.appendChild(title);
-  const link=githubLink(item.url,'GitHub');if(link)top.appendChild(link);
-  article.appendChild(top);
-  const desc=document.createElement('div');text(desc,item.description||'No description');article.appendChild(desc);
-  const meta=document.createElement('div');meta.className='meta';text(meta,(item.language||'Unknown')+' · ★ '+Number(item.stars||0)+' · ');
-  if(item.owner){const owner=document.createElement('button');owner.type='button';owner.textContent='@'+item.owner;owner.addEventListener('click',()=>loadEngineer(item.owner));meta.appendChild(owner)}
-  article.appendChild(meta);
-  results.appendChild(article);
+function text(parent,value){parent.appendChild(document.createTextNode(String(value??"")))}
+function el(tag,attrs={},...children){const n=document.createElement(tag);for(const[k,v]of Object.entries(attrs)){if(k==="class")n.className=v;else if(k==="text")n.textContent=v;else if(k==="onclick")n.addEventListener("click",v);else n.setAttribute(k,v)}children.flat().forEach(c=>{if(c instanceof Node)n.appendChild(c);else if(c!==null&&c!==undefined)text(n,c)});return n}
+function githubLink(url,label="GitHub"){if(typeof url!=="string"||!/^https:\/\/(www\.)?github\.com\//.test(url))return null;return el("a",{href:url,target:"_blank",rel:"noopener noreferrer"},label)}
+function setStatus(msg,type=""){const n=$("#status");n.textContent=msg;n.className="status"+(type?" "+type:"")}
+function setGraphStatus(msg){$("#graph-status").textContent=msg}
+function download(name,content,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function csv(rows){if(!rows.length)return "";const cols=Object.keys(rows[0]);const esc=v=>'"'+String(v??"").replaceAll('"','""')+'"';return [cols.map(esc).join(","),...rows.map(r=>cols.map(k=>esc(r[k])).join(","))].join("\n")}
+function apiUrl(path,params){const u=new URL(path,location.origin);Object.entries(params).forEach(([k,v])=>{if(v!==""&&v!==null&&v!==undefined)u.searchParams.set(k,v)});return u}
+async function getJson(url){const r=await fetch(url,{headers:{Accept:"application/json"}});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.detail||"Request failed");return d}
+
+function renderRepoResults(){
+ clear($("#results"));const items=state.results;
+ if(!items.length){$("#results").appendChild(el("div",{class:"empty"},"No repositories found. Try a broader query."));return}
+ const langs=[...new Set(items.map(x=>x.language).filter(Boolean))].sort(), select=$("#language"), current=select.value;
+ clear(select);select.appendChild(el("option",{value:""},"Any language"));langs.forEach(v=>select.appendChild(el("option",{value:v},v)));if(langs.includes(current))select.value=current;
+ items.forEach(item=>{
+  const card=el("article",{class:"result"});
+  const title=el("h3",{},item.repository||"Unnamed repository");const link=githubLink(item.url);const top=el("div",{class:"result-top"},title,link||"");card.appendChild(top);
+  card.appendChild(el("p",{class:"muted"},item.description||"No description provided."));
+  card.appendChild(el("div",{class:"meta"},"★ "+Number(item.stars||0).toLocaleString()+" · "+(item.language||"Unknown")+" · owner "+(item.owner||"unknown")));
+  const actions=el("div",{class:"user-actions"});
+  if(item.owner)actions.appendChild(el("button",{class:"btn",onclick:()=>loadEngineer(item.owner)},"View engineer"));
+  card.appendChild(actions);$("#results").appendChild(card);
  });
 }
-async function loadEngineer(login){
- const card=document.querySelector('#profile-card'), profile=document.querySelector('#profile');
- card.hidden=false;clear(profile);const loading=document.createElement('p');loading.className='muted';text(loading,'Loading @'+login+'…');profile.appendChild(loading);
- card.scrollIntoView({behavior:'smooth',block:'start'});
- try{
-  const r=await fetch('/api/public/engineers/'+encodeURIComponent(login),{headers:{Accept:'application/json'}});
-  const d=await r.json();if(!r.ok)throw new Error(d.detail||'Profile failed');
-  clear(profile);
-  const heading=document.createElement('div');heading.className='result-top';
-  const name=document.createElement('strong');text(name,d.name||('@'+d.login));heading.appendChild(name);
-  const link=githubLink(d.url,'GitHub profile');if(link)heading.appendChild(link);profile.appendChild(heading);
-  const bio=document.createElement('p');bio.className='muted';text(bio,d.bio||'No public bio.');profile.appendChild(bio);
-  const meta=document.createElement('div');meta.className='meta';text(meta,'@'+d.login+' · '+Number(d.followers||0)+' followers · '+Number(d.public_repos||0)+' public repositories');profile.appendChild(meta);
-  if(d.company){const company=document.createElement('p');company.className='meta';text(company,'Company: '+d.company);profile.appendChild(company)}
-  const orgTitle=document.createElement('h3');orgTitle.textContent='Organizations';profile.appendChild(orgTitle);
-  const orgs=document.createElement('p');orgs.className='meta';text(orgs,(d.organizations||[]).join(', ')||'No public organizations listed.');profile.appendChild(orgs);
-  const title=document.createElement('h3');title.textContent='Recent public repositories';profile.appendChild(title);
-  const list=document.createElement('div');list.className='results';
-  (d.repositories||[]).forEach(repo=>{
-   const item=document.createElement('article');item.className='result';const top=document.createElement('div');top.className='result-top';
-   const repoName=document.createElement('strong');text(repoName,repo.name);top.appendChild(repoName);const repoLink=githubLink(repo.url,'GitHub');if(repoLink)top.appendChild(repoLink);item.appendChild(top);
-   const desc=document.createElement('div');text(desc,repo.description||'No description');item.appendChild(desc);
-   const m=document.createElement('div');m.className='meta';text(m,(repo.language||'Unknown')+' · ★ '+Number(repo.stars||0));item.appendChild(m);list.appendChild(item);
-  });
-  profile.appendChild(list);
-  const activityTitle=document.createElement('h3');activityTitle.textContent='Recent activity';profile.appendChild(activityTitle);
-  const activity=document.createElement('ul');activity.className='fallback-list';
-  (d.activity||[]).slice(0,8).forEach(item=>{const li=document.createElement('li');text(li,item.repository+(item.pushed_at?' — '+item.pushed_at:'')+(item.language?' · '+item.language:''));activity.appendChild(li)});
-  profile.appendChild(activity);
- }catch(err){clear(profile);const error=document.createElement('p');error.className='error';text(error,err.message||'Profile failed');profile.appendChild(error)}
+function renderUserResults(){
+ clear($("#results"));const items=state.results;
+ if(!items.length){$("#results").appendChild(el("div",{class:"empty"},"No engineers found. Try a skill, company, or username."));return}
+ items.forEach(item=>{
+  const avatar=item.avatar_url?el("img",{class:"avatar",src:item.avatar_url,alt:""}):el("div",{class:"avatar"});
+  const card=el("article",{class:"result user-card"},avatar,el("div",{class:"body"},
+    el("div",{class:"result-top"},el("h3",{},el("a",{href:item.url||"#",target:"_blank",rel:"noopener noreferrer"},"@"+item.login)),el("span",{class:"chip"},item.type)),
+    el("div",{class:"meta"},Number(item.followers||0).toLocaleString()+" followers · "+Number(item.public_repos||0).toLocaleString()+" public repos"),
+    el("div",{class:"user-actions"},el("button",{class:"btn primary",onclick:()=>loadEngineer(item.login)},"Open profile"))
+  ));$("#results").appendChild(card);
+ });
 }
 async function search(){
- const value=q.value.trim();if(value.length<2)return;
- state.query=value;state.page=1;setStatus('Searching…');
- prev.disabled=true;next.disabled=true;
+ const q=state.mode==="repos"?$("#q").value.trim():$("#uq").value.trim();if(q.length<2)return;
+ state.query=q;state.page=1;state.sort=state.mode==="repos"?$("#repo-sort").value:$("#user-sort").value;setStatus("Searching…");$("#prev").disabled=$("#next").disabled=true;
  try{
-  const r=await fetch('/api/search?q='+encodeURIComponent(value)+'&limit='+state.limit+'&page='+state.page,{headers:{Accept:'application/json'}});
-  const d=await r.json();
-  if(!r.ok)throw new Error(d.detail||'Search failed');
-  state.results=Array.isArray(d.results)?d.results:[];renderLanguageOptions(state.results);renderResults();
-  setStatus(state.results.length+' result(s) on page '+d.page,'success');pageLabel.textContent='Page '+d.page;
-  next.disabled=state.results.length<state.limit;
- }catch(err){clear(results);setStatus(err.message||'Search failed','error');pageLabel.textContent='Page '+state.page}
+  const params={q,limit:state.limit,page:state.page,sort:state.sort};
+  let d;
+  if(state.mode==="repos"){params.language=$("#language").value;params.min_stars=$("#min-stars").value;d=await getJson(apiUrl("/api/search",params))}
+  else d=await getJson(apiUrl("/api/users/search",params));
+  state.results=d.results||[];state.page=d.page;renderRepoResults=state.mode==="repos"?renderRepoResults:renderRepoResults;state.mode==="repos"?renderRepoResults():renderUserResults();
+  setStatus(state.results.length+" result(s) on page "+d.page,"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit;$("#export-results").disabled=!state.results.length;
+ }catch(e){clear($("#results"));$("#results").appendChild(el("div",{class:"empty"},e.message));setStatus(e.message,"error");$("#export-results").disabled=true}
 }
-async function changePage(delta){
- const target=state.page+delta;if(target<1||!state.query)return;
- state.page=target;setStatus('Loading page '+target+'…');prev.disabled=true;next.disabled=true;
+async function page(delta){
+ const target=state.page+delta;if(target<1||!state.query)return;state.page=target;setStatus("Loading page "+target+"…");$("#prev").disabled=$("#next").disabled=true;
  try{
-  const r=await fetch('/api/search?q='+encodeURIComponent(state.query)+'&limit='+state.limit+'&page='+target,{headers:{Accept:'application/json'}});
-  const d=await r.json();if(!r.ok)throw new Error(d.detail||'Search failed');
-  state.results=Array.isArray(d.results)?d.results:[];renderLanguageOptions(state.results);renderResults();
-  pageLabel.textContent='Page '+d.page;setStatus(state.results.length+' result(s) on page '+d.page,'success');
-  prev.disabled=state.page<=1;next.disabled=state.results.length<state.limit;
- }catch(err){state.page=Math.max(1,target-delta);setStatus(err.message||'Search failed','error');prev.disabled=state.page<=1;next.disabled=true}
+  const params={q:state.query,limit:state.limit,page:target,sort:state.sort};let d;
+  if(state.mode==="repos"){params.language=$("#language").value;params.min_stars=$("#min-stars").value;d=await getJson(apiUrl("/api/search",params))}
+  else d=await getJson(apiUrl("/api/users/search",params));
+  state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults();setStatus(state.results.length+" result(s) on page "+d.page,"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit
+ }catch(e){state.page=Math.max(1,target-delta);setStatus(e.message,"error");$("#prev").disabled=state.page<=1}
 }
-form.addEventListener('submit',e=>{e.preventDefault();search()});
-language.addEventListener('change',renderResults);minStars.addEventListener('input',renderResults);
-prev.addEventListener('click',()=>changePage(-1));next.addEventListener('click',()=>changePage(1));
+async function loadEngineer(login){
+ const card=$("#profile-card"),box=$("#profile");card.hidden=false;clear(box);box.appendChild(el("div",{class:"empty"},"Loading @"+login+"…"));card.scrollIntoView({behavior:"smooth",block:"start"});
+ try{
+  const d=await getJson("/api/public/engineers/"+encodeURIComponent(login));clear(box);$("#profile-title").textContent="Engineer · @"+d.login;
+  const left=el("div"),right=el("div");
+  const head=el("div",{class:"result-top"},el("div",{},el("h3",{},d.name||("@"+d.login)),el("div",{class:"meta"},"@"+d.login+" · "+Number(d.followers||0).toLocaleString()+" followers · "+Number(d.public_repos||0).toLocaleString()+" public repositories")),githubLink(d.url,"GitHub profile")||"");
+  left.appendChild(head);left.appendChild(el("p",{class:"muted"},d.bio||"No public bio."));
+  if(d.company)left.appendChild(el("p",{class:"meta"},"Company · "+d.company));
+  left.appendChild(el("h3",{},"Organizations"));left.appendChild(el("div",{class:"chips"},(d.organizations||[]).map(o=>el("span",{class:"chip"},o))));
+  left.appendChild(el("h3",{},"Recent activity"));left.appendChild(el("ul",{class:"fallback"},(d.activity||[]).slice(0,10).map(a=>el("li",{},a.repository+(a.pushed_at?" · "+a.pushed_at:"")+(a.language?" · "+a.language:"")))));
+  right.appendChild(el("h3",{},"Public repositories"));const list=el("div",{class:"repo-list"});(d.repositories||[]).forEach(r=>list.appendChild(el("div",{class:"repo-mini"},el("strong",{},githubLink(r.url,r.name)||r.name),el("span",{class:"meta"},"★ "+Number(r.stars||0)+" · "+(r.language||"Unknown")),el("div",{class:"muted"},r.description||"No description"))));right.appendChild(list);
+  box.appendChild(el("div",{class:"profile-grid"},left,right));
+ }catch(e){clear(box);box.appendChild(el("div",{class:"empty"},e.message))}
+}
 
-async function loadGraph(){
- const svg=document.querySelector('#graph'), fallback=document.querySelector('#graph-fallback');
- try{
-  const r=await fetch('/api/graph',{headers:{Accept:'application/json'}});const g=await r.json();
-  if(!r.ok)throw new Error(g.detail||'Graph failed');renderGraph(g,svg,fallback);
- }catch(err){clear(svg);clear(fallback);const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x','20');t.setAttribute('y','35');t.setAttribute('fill','#94a3b8');text(t,err.message);svg.appendChild(t)}
+document.querySelectorAll(".tab").forEach(tab=>tab.addEventListener("click",()=>{
+ document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));tab.classList.add("active");state.mode=tab.dataset.tab;state.results=[];state.query="";state.page=1;clear($("#results"));$("#export-results").disabled=true;$("#page-label").textContent="Page 1";$("#prev").disabled=$("#next").disabled=true;$("#repo-search").hidden=state.mode!=="repos";$("#user-search").hidden=state.mode!=="users";setStatus("")
+}));
+$("#repo-form").addEventListener("submit",e=>{e.preventDefault();search()});$("#user-form").addEventListener("submit",e=>{e.preventDefault();search()});$("#prev").addEventListener("click",()=>page(-1));$("#next").addEventListener("click",()=>page(1));$("#close-profile").addEventListener("click",()=>$("#profile-card").hidden=true);
+
+$("#export-results").addEventListener("click",()=>{
+ if(!state.results.length)return;
+ if(state.mode==="repos")download("snb-repositories.csv",csv(state.results.map(x=>({repository:x.repository,owner:x.owner,stars:x.stars,language:x.language,url:x.url,description:x.description}))),"text/csv");
+ else download("snb-engineers.csv",csv(state.results.map(x=>({login:x.login,type:x.type,followers:x.followers,public_repos:x.public_repos,url:x.url}))),"text/csv");
+});
+
+function graphFiltered(){
+ const min=Number($("#centrality").value||0),comm=$("#community").value,needle=$("#node-filter").value.trim().toLowerCase();
+ const nodes=(graphState.nodes||[]).filter(n=>Number(n.centrality||0)>=min&&(!comm||String(n.community)===comm)&&(!needle||String(n.login).toLowerCase().includes(needle)));
+ const allowed=new Set(nodes.map(n=>n.login));const edges=(graphState.edges||[]).filter(e=>allowed.has(e.a)&&allowed.has(e.b));
+ return {nodes,edges};
 }
-function renderGraph(g,svg,fallback){
- graphState=g;clear(community);
- const all=document.createElement('option');all.value='';text(all,'All communities');community.appendChild(all);
- (g.communities||[]).forEach(c=>{const o=document.createElement('option');o.value=String(c.id);text(o,'Community '+c.id+' ('+c.size+')');community.appendChild(o)});
- drawGraph();
+function graphColor(id){const palette=["#1769e0","#7c3aed","#0891b2","#15803d","#c2410c","#be123c","#475569"];return palette[Math.abs(Number(id)||0)%palette.length]}
+function layout(nodes,edges){
+ const W=1200,H=650,pos={};nodes.forEach((n,i)=>{const a=2*Math.PI*i/Math.max(nodes.length,1);pos[n.login]={x:W/2+Math.cos(a)*Math.min(420,150+nodes.length*7),y:H/2+Math.sin(a)*Math.min(245,90+nodes.length*5)}});
+ const links=edges.map(e=>[e.a,e.b]);const iterations=Math.min(70,20+nodes.length);
+ for(let it=0;it<iterations;it++){const force={};nodes.forEach(n=>force[n.login]={x:0,y:0});
+  for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){const a=pos[nodes[i].login],b=pos[nodes[j].login],dx=a.x-b.x,dy=a.y-b.y,d=Math.max(35,Math.hypot(dx,dy)),f=1800/(d*d);force[nodes[i].login].x+=dx/d*f;force[nodes[i].login].y+=dy/d*f;force[nodes[j].login].x-=dx/d*f;force[nodes[j].login].y-=dy/d*f}
+  links.forEach(([aa,bb])=>{const a=pos[aa],b=pos[bb];if(!a||!b)return;const dx=b.x-a.x,dy=b.y-a.y,d=Math.max(1,Math.hypot(dx,dy)),f=(d-150)*.004;force[aa].x+=dx/d*f;force[aa].y+=dy/d*f;force[bb].x-=dx/d*f;force[bb].y-=dy/d*f});
+  nodes.forEach(n=>{const p=pos[n.login],f=force[n.login];p.x=Math.max(30,Math.min(W-30,p.x+f.x*30));p.y=Math.max(30,Math.min(H-30,p.y+f.y*30))})
+ }
+ return pos;
 }
 function drawGraph(){
- const svg=document.querySelector('#graph'), fallback=document.querySelector('#graph-fallback');
- clear(svg);clear(fallback);
- const min=Number(centrality.value||0), selected=community.value;
- const nodes=(graphState.nodes||[]).filter(n=>Number(n.centrality||0)>=min&&(!selected||String(n.community)===selected));
- const allowed=new Set(nodes.map(n=>n.login));
- const edges=(graphState.edges||[]).filter(e=>allowed.has(e.a)&&allowed.has(e.b));
- const W=1000,H=500,ns='http://www.w3.org/2000/svg';
- if(!nodes.length){const t=document.createElementNS(ns,'text');t.setAttribute('x','20');t.setAttribute('y','35');t.setAttribute('fill','#94a3b8');text(t,'No graph nodes match the current filters.');svg.appendChild(t);return}
- const positions={};nodes.forEach((n,i)=>{const a=2*Math.PI*i/nodes.length;positions[n.login]={x:W/2+Math.cos(a)*Math.min(360,120+nodes.length*18),y:H/2+Math.sin(a)*Math.min(170,80+nodes.length*8)}});
- edges.forEach(e=>{const a=positions[e.a],b=positions[e.b];if(!a||!b)return;const line=document.createElementNS(ns,'line');line.setAttribute('x1',a.x);line.setAttribute('y1',a.y);line.setAttribute('x2',b.x);line.setAttribute('y2',b.y);line.setAttribute('stroke-width',Math.max(1,Math.min(8,Number(e.weight)||1)));line.classList.add('edge');line.setAttribute('aria-label',e.reasons.join('; '));svg.appendChild(line)});
- nodes.forEach(n=>{
-  const p=positions[n.login],group=document.createElementNS(ns,'g');group.classList.add('node');
-  const circle=document.createElementNS(ns,'circle');circle.setAttribute('cx',p.x);circle.setAttribute('cy',p.y);circle.setAttribute('r',String(8+Math.min(18,Number(n.score||0)/5)));group.appendChild(circle);
-  const title=document.createElementNS(ns,'title');text(title,'@'+n.login+' · score '+Number(n.score||0)+' · centrality '+Number(n.centrality||0));group.appendChild(title);
-  const label=document.createElementNS(ns,'text');label.setAttribute('x',p.x+13);label.setAttribute('y',p.y+4);text(label,'@'+(n.login||'unknown'));group.appendChild(label);
-  group.addEventListener('click',()=>loadEngineer(n.login));svg.appendChild(group);
-  const li=document.createElement('li');text(li,'@'+(n.login||'unknown')+' — score '+Number(n.score||0)+' · centrality '+Number(n.centrality||0));fallback.appendChild(li);
+ const svg=$("#graph-svg");clear(svg);const {nodes,edges}=graphFiltered();selectedNode=null;$("#edge-details").textContent="Select a node to inspect its relationships.";clear($("#graph-fallback"));
+ if(!nodes.length){svg.appendChild(elNS("text",{x:30,y:45,fill:"#617087"},"No nodes match the current filters."));setGraphStatus("No matching nodes");return}
+ const display=nodes.length>140?nodes.slice(0,140):nodes;const allowed=new Set(display.map(n=>n.login));const displayEdges=edges.filter(e=>allowed.has(e.a)&&allowed.has(e.b));const pos=layout(display,displayEdges);const ns="http://www.w3.org/2000/svg";
+ const root=document.createElementNS(ns,"g");root.setAttribute("transform","translate(0 0)");svg.appendChild(root);
+ displayEdges.forEach(e=>{const a=pos[e.a],b=pos[e.b],line=document.createElementNS(ns,"line");line.setAttribute("x1",a.x);line.setAttribute("y1",a.y);line.setAttribute("x2",b.x);line.setAttribute("y2",b.y);line.setAttribute("stroke-width",String(Math.max(1,Math.min(8,Number(e.weight)||1))));line.setAttribute("class","edge");line.dataset.a=e.a;line.dataset.b=e.b;root.appendChild(line)});
+ display.forEach(n=>{const p=pos[n.login],g=document.createElementNS(ns,"g");g.setAttribute("class","node");g.dataset.login=n.login;const circle=document.createElementNS(ns,"circle");circle.setAttribute("cx",p.x);circle.setAttribute("cy",p.y);circle.setAttribute("r",String(7+Math.min(18,Number(n.score||0)/4)));circle.setAttribute("fill",graphColor(n.community));g.appendChild(circle);const title=document.createElementNS(ns,"title");title.textContent="@"+n.login+" · score "+Number(n.score||0)+" · centrality "+Number(n.centrality||0);g.appendChild(title);const label=document.createElementNS(ns,"text");label.setAttribute("x",p.x+11);label.setAttribute("y",p.y+4);label.textContent="@"+n.login;g.appendChild(label);
+ let drag=false;g.addEventListener("pointerdown",ev=>{drag=true;g.setPointerCapture(ev.pointerId);ev.stopPropagation()});g.addEventListener("pointermove",ev=>{if(!drag)return;const r=svg.getBoundingClientRect();const x=(ev.clientX-r.left)/r.width*1200,y=(ev.clientY-r.top)/r.height*650;circle.setAttribute("cx",x);circle.setAttribute("cy",y);label.setAttribute("x",x+11);label.setAttribute("y",y+4);displayEdges.forEach(e=>{if(e.a!==n.login&&e.b!==n.login)return;const l=root.querySelector('line[data-a="'+CSS.escape(e.a)+'"][data-b="'+CSS.escape(e.b)+'"]');if(l){const other=e.a===n.login?pos[e.b]:pos[e.a];l.setAttribute("x1",e.a===n.login?x:other.x);l.setAttribute("y1",e.a===n.login?y:other.y);l.setAttribute("x2",e.b===n.login?x:other.x);l.setAttribute("y2",e.b===n.login?y:other.y)}})});g.addEventListener("pointerup",()=>{if(drag){drag=false;showNode(n.login)}});g.addEventListener("click",()=>showNode(n.login));root.appendChild(g);
+ const li=el("li",{},el("button",{class:"btn",onclick:()=>showNode(n.login)},"@"+n.login)," · score "+Number(n.score||0)+" · centrality "+Number(n.centrality||0));$("#graph-fallback").appendChild(li)
  });
- const details=document.createElement('details');const summary=document.createElement('summary');text(summary,'Relationship details');details.appendChild(summary);
- edges.slice(0,30).forEach(e=>{const p=document.createElement('p');p.className='meta';text(p,'@'+e.a+' ↔ @'+e.b+' · weight '+Number(e.weight||0)+' · '+e.reasons.join('; '));details.appendChild(p)});
- fallback.appendChild(details);
+ setGraphStatus((nodes.length>140?"Showing 140 of ":"Showing ")+nodes.length+" nodes · "+displayEdges.length+" relationships");
 }
+function elNS(tag,attrs,...children){const ns="http://www.w3.org/2000/svg",n=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));children.forEach(c=>{n.appendChild(document.createTextNode(c))});return n}
+function showNode(login){
+ selectedNode=login;document.querySelectorAll(".node").forEach(n=>n.classList.toggle("selected",n.dataset.login===login));const node=(graphState.nodes||[]).find(n=>n.login===login),rels=(graphState.edges||[]).filter(e=>e.a===login||e.b===login).sort((a,b)=>Number(b.weight)-Number(a.weight));
+ const box=$("#edge-details");clear(box);box.appendChild(el("div",{},el("strong",{},"@"+login)," · score "+Number(node?.score||0)+" · centrality "+Number(node?.centrality||0)));if(!rels.length)box.appendChild(el("p",{class:"muted"},"No recorded relationships."));rels.slice(0,20).forEach(e=>box.appendChild(el("p",{class:"meta"},"@"+e.a+" ↔ @"+e.b+" · weight "+Number(e.weight||0)+" · "+(e.reasons||[]).join("; "))));
+ loadEngineer(login)
+}
+$("#apply-graph").addEventListener("click",drawGraph);$("#reset-graph").addEventListener("click",()=>{$("#community").value="";$("#centrality").value="0";$("#node-filter").value="";view={scale:1,tx:0,ty:0};drawGraph()});
+$("#download-graph").addEventListener("click",()=>download("security-network-graph.json",JSON.stringify(graphState,null,2),"application/json"));
+$("#download-svg").addEventListener("click",()=>{const clone=$("#graph-svg").cloneNode(true);clone.setAttribute("xmlns","http://www.w3.org/2000/svg");download("security-network-graph.svg",new XMLSerializer().serializeToString(clone),"image/svg+xml")});
 
-applyGraph.addEventListener('click',drawGraph);
+async function loadGraph(){
+ try{graphState=await getJson("/api/graph");const c=$("#community");clear(c);c.appendChild(el("option",{value:""},"All communities"));(graphState.communities||[]).forEach(x=>c.appendChild(el("option",{value:String(x.id)},"Community "+x.id+" · "+x.size+" members")));$("#metric-nodes").textContent=(graphState.nodes||[]).length;$("#metric-edges").textContent=(graphState.edges||[]).length;$("#metric-communities").textContent=(graphState.communities||[]).length;drawGraph()}catch(e){setGraphStatus(e.message)}
+}
 loadGraph();
 </script>
 </body>

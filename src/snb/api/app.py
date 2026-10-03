@@ -22,8 +22,6 @@ app = FastAPI(
 DB_PATH = os.environ.get("SNB_HISTORY_DB", "data/history.db")
 PUBLIC_PAGE = (Path(__file__).with_name("index.html")).read_text(encoding="utf-8")
 
-# Lightweight process-local guard for the public search endpoint. This is not
-# intended as a substitute for an edge/WAF rate limiter in a large deployment.
 _SEARCH_WINDOW = 60.0
 _SEARCH_LIMIT = 30
 _search_hits: dict[str, deque[float]] = defaultdict(deque)
@@ -46,10 +44,11 @@ def _check_search_rate(request: Request) -> None:
     while hits and now - hits[0] >= _SEARCH_WINDOW:
         hits.popleft()
     if len(hits) >= _SEARCH_LIMIT:
+        retry_after = max(1, int(_SEARCH_WINDOW - (now - hits[0])))
         raise HTTPException(
             status_code=429,
             detail="search rate limit exceeded; try again later",
-            headers={"Retry-After": str(max(1, int(_SEARCH_WINDOW - (now - hits[0])))},
+            headers={"Retry-After": str(retry_after)},
         )
     hits.append(now)
 

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi import Body, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -106,6 +106,7 @@ class JobResponse(BaseModel):
     attempts: int = Field(ge=0)
     max_attempts: int = Field(ge=1)
     last_error: str
+    result: str
 
 
 class PublicEngineerProfile(BaseModel):
@@ -237,6 +238,7 @@ def search(
 @app.post("/api/jobs", response_model=JobResponse, status_code=202, tags=["private"])
 def enqueue_job(
     kind: str = Query(..., min_length=1, max_length=100),
+    payload: dict[str, Any] = Body(default_factory=dict),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     x_api_key: str | None = Header(default=None),
 ) -> JobResponse:
@@ -244,11 +246,11 @@ def enqueue_job(
     if kind not in {"discovery", "intelligence"}:
         raise HTTPException(status_code=422, detail="unsupported job kind")
     try:
-        job = get_jobs().enqueue(kind, {}, idempotency_key=idempotency_key)
+        job = get_jobs().enqueue(kind, payload, idempotency_key=idempotency_key)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return JobResponse(id=job.id, kind=job.kind, status=job.status, attempts=job.attempts,
-                       max_attempts=job.max_attempts, last_error=job.last_error)
+                       max_attempts=job.max_attempts, last_error=job.last_error, result=job.result)
 
 
 @app.get("/api/jobs/{job_id}", response_model=JobResponse, tags=["private"])

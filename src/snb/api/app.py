@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import os
+import secrets
 import time
 from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse
 
 from ..github_api import GitHubClient, GitHubError
@@ -22,6 +25,26 @@ app = FastAPI(
 DB_PATH = os.environ.get("SNB_HISTORY_DB", "data/history.db")
 PUBLIC_PAGE = (Path(__file__).with_name("index.html")).read_text(encoding="utf-8")
 
+_ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get("SNB_ALLOWED_HOSTS", "*").split(",")
+    if host.strip()
+]
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=_ALLOWED_HOSTS or ["*"])
+
+
+def _public_github_url(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = urlparse(value)
+    except ValueError:
+        return None
+    if parsed.scheme != "https" or parsed.hostname not in {"github.com", "www.github.com"}:
+        return None
+    return value
+
+
 _SEARCH_WINDOW = 60.0
 _SEARCH_LIMIT = 30
 _search_hits: dict[str, deque[float]] = defaultdict(deque)
@@ -33,7 +56,7 @@ def get_history() -> History:
 
 def require_api_key(value: str | None) -> None:
     configured = os.environ.get("API_KEY")
-    if configured and value != configured:
+    if configured and (value is None or not secrets.compare_digest(value, configured)):
         raise HTTPException(status_code=401, detail="invalid API key")
 
 
@@ -51,6 +74,22 @@ def _check_search_rate(request: Request) -> None:
             headers={"Retry-After": str(retry_after)},
         )
     hits.append(now)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next: Any) -> Any:
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+        "connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    )
+    if request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+    return response
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -86,7 +125,7 @@ def search(
                 "stars": item.get("stargazers_count", 0),
                 "language": item.get("language"),
                 "owner": owner.get("login"),
-                "url": item.get("html_url"),
+                "url": _public_github_url(item.get("html_url")),
             }
         )
     return {"query": q, "results": results}

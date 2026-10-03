@@ -320,3 +320,50 @@ def test_public_web_ui_exposes_profile_and_graph_controls():
     assert 'id="apply-graph"' in response.text
     assert "loadEngineer(n.login)" in response.text
     assert "Relationship details" in response.text
+\n\ndef test_private_engineer_analysis_returns_score_breakdown_and_history(monkeypatch):
+    monkeypatch.setenv("API_KEY", "secret")
+    monkeypatch.setattr(
+        "snb.api.app.GitHubClient.get_user",
+        lambda self, login: {"login": login},
+    )
+    monkeypatch.setattr(
+        "snb.api.app.GitHubClient.list_user_repos",
+        lambda self, login, limit=100: [
+            {
+                "name": "ebpf-runtime-security",
+                "full_name": f"{login}/ebpf-runtime-security",
+                "description": "eBPF runtime security tooling",
+                "topics": ["ebpf", "runtime-security"],
+                "stargazers_count": 25,
+                "language": "Go",
+                "pushed_at": "2026-09-20T00:00:00Z",
+                "html_url": f"https://github.com/{login}/ebpf-runtime-security",
+            }
+        ],
+    )
+    class FakeHistory:
+        def engineer_history(self, login):
+            return [{"run_id": 4, "created_at": "2026-09-20 00:00:00", "score": 16.0}]
+    monkeypatch.setattr("snb.api.app.get_history", lambda: FakeHistory())
+    response = TestClient(app).get("/api/engineers/alice/analysis", headers={"X-API-Key": "secret"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["login"] == "alice"
+    assert data["score"] is not None
+    assert data["matched_domains"]
+    assert data["breakdown"]
+    assert data["evidence"]
+    assert data["matched_repositories"][0]["url"] == "https://github.com/alice/ebpf-runtime-security"
+    assert data["history"][0]["score"] == 16.0
+
+
+def test_private_engineer_analysis_requires_key(monkeypatch):
+    monkeypatch.setenv("API_KEY", "secret")
+    response = TestClient(app).get("/api/engineers/alice/analysis")
+    assert response.status_code == 401
+
+
+def test_private_engineer_analysis_rejects_invalid_login(monkeypatch):
+    monkeypatch.delenv("API_KEY", raising=False)
+    response = TestClient(app).get("/api/engineers/not valid!/analysis")
+    assert response.status_code == 422

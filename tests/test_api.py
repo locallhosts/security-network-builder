@@ -39,3 +39,20 @@ def test_graph_is_public_even_when_api_key_is_configured(monkeypatch):
     monkeypatch.setenv("API_KEY", "secret")
     client = TestClient(app)
     assert client.get("/api/graph").status_code == 200
+
+
+def test_security_headers_and_github_url_validation(monkeypatch):
+    monkeypatch.setattr(
+        "snb.api.app.GitHubClient.search_repositories",
+        lambda self, query, per_page=30: [
+            {"full_name": "acme/safe", "html_url": "https://github.com/acme/safe"},
+            {"full_name": "acme/unsafe", "html_url": "https://evil.example/acme/unsafe"},
+        ],
+    )
+    response = TestClient(app).get("/api/search?q=security")
+    assert response.status_code == 200
+    assert response.json()["results"][0]["url"] == "https://github.com/acme/safe"
+    assert response.json()["results"][1]["url"] is None
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Cache-Control"] == "no-store"

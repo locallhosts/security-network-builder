@@ -153,7 +153,7 @@ Goal: add optional intelligence without allowing untrusted GitHub content to con
    - [x] Prompt/input boundaries
    - [x] Output validation
    - [x] Offline fallback
-   - [ ] Provider failure tests
+   - [x] Provider failure tests
 
 11. **Anthropic integration**
    - [x] Same provider interface
@@ -168,11 +168,11 @@ Goal: add optional intelligence without allowing untrusted GitHub content to con
    - [x] Queue/worker implementation
    - [x] Retry and backoff policy
    - [x] Idempotency and duplicate protection
-   - [ ] Job status API
+   - [x] Job status API
    - [x] Failure/recovery tests
-   - [ ] Resource and rate-limit controls
+   - [x] Resource and rate-limit controls
 
-**Phase 4 status:** provider and queue foundations are implemented; provider failure coverage, status API, and resource/rate-limit controls remain before the phase exit criteria are met.
+**Phase 4 status:** provider boundaries, failure coverage, durable jobs, status reporting, bounded workers, and GitHub rate-limit handling are implemented.
 
 ### Phase 5 — Production
 **Theme: Make the platform durable, authenticated, and deployable**
@@ -180,24 +180,24 @@ Goal: add optional intelligence without allowing untrusted GitHub content to con
 Goal: move from local application to production-grade service only after earlier phases are stable.
 
 13. **PostgreSQL**
-   - [ ] PostgreSQL history implementation
-   - [ ] Schema and migration strategy
-   - [ ] Data-access boundary
-   - [ ] SQLite local compatibility where appropriate
-   - [ ] Transaction and concurrency tests
+   - [x] PostgreSQL history implementation
+   - [x] Schema and migration strategy
+   - [x] Data-access boundary
+   - [x] SQLite local compatibility where appropriate
+   - [x] Transaction and concurrency tests
 
 14. **API authentication**
-   - [~] Current API-key foundation
-   - [ ] Production authentication design
-   - [ ] Key/token rotation
-   - [ ] Authorization boundaries
-   - [ ] Audit/security logging
-   - [ ] Abuse/rate-limit controls
-   - [ ] Authentication regression tests
+   - [x] Current API-key foundation
+   - [x] Production authentication design
+   - [x] Key/token rotation
+   - [x] Authorization boundaries
+   - [x] Audit/security logging
+   - [x] Abuse/rate-limit controls
+   - [x] Authentication regression tests
 
 15. **CI/CD deployment**
-   - [ ] CI test/build pipeline fully green
-   - [ ] Security/dependency checks
+   - [x] CI test/build pipeline fully green
+   - [x] Security/dependency checks
    - [ ] Container build and smoke test
    - [ ] Production environment configuration
    - [ ] Deployment health checks

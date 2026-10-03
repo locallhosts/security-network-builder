@@ -185,7 +185,10 @@ def main(argv: list[str]) -> int:
         print(f"Run {d['base']} -> run {d['run']}")
         print("New: "+(", ".join(f"@{x['login']} ({x['score']:g})" for x in d["new"]) or "none"))
         print("Dropped: "+(", ".join(f"@{x['login']} ({x['score']:g})" for x in d["dropped"]) or "none"))
-        print("Movers: "+(", ".join(f"@{m['login']} {m['from']:g}->{m['to']:g} ({m['delta']:+g})" for m in d["movers"]) or "none")
+        print("Movers: " + (", ".join(
+            f"@{m['login']} {m['from']:g}->{m['to']:g} ({m['delta']:+g})"
+            for m in d["movers"]
+        ) or "none"))
     elif args.set:
         try: h.set_status(args.set[0],args.set[1],args.note)
         except ValueError as exc: print(exc); return 1

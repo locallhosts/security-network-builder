@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 from fastapi import Body, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ..audit import AuditLog
 from ..config import Profile
@@ -43,6 +43,11 @@ class APISettings:
     environment: str
     allowed_hosts: tuple[str, ...]
     jobs_db: str
+
+    @property
+    def api_key(self) -> str | None:
+        """Backward-compatible single-key view for callers and older integrations."""
+        return self.api_keys[0] if self.api_keys else None
 
 
 def load_settings() -> APISettings:
@@ -239,16 +244,18 @@ def search(
     results = []
     for item in items:
         owner = item.get("owner") or {}
-        results.append(
-            {
-                "repository": item.get("full_name"),
-                "description": item.get("description"),
-                "stars": item.get("stargazers_count", 0),
-                "language": item.get("language"),
-                "owner": owner.get("login"),
-                "url": _public_github_url(item.get("html_url")),
-            }
-        )
+        raw = {
+            "repository": item.get("full_name"),
+            "description": item.get("description"),
+            "stars": item.get("stargazers_count", 0),
+            "language": item.get("language"),
+            "owner": owner.get("login"),
+            "url": _public_github_url(item.get("html_url")),
+        }
+        try:
+            results.append(SearchResult.model_validate(raw))
+        except ValidationError as exc:
+            raise HTTPException(status_code=500, detail="invalid upstream search result") from exc
     return SearchResponse(query=q, page=page, limit=limit, results=results)
 
 
@@ -316,6 +323,46 @@ def get_run(run_id: int, x_api_key: str | None = Header(default=None)) -> dict[s
 def engineer(login: str, x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
     require_api_key(x_api_key)
     return {"login": login, "history": get_history().engineer_history(login)}
+
+
+@app.get("/api/engineers/{login}/analysis", tags=["private"])
+def engineer_analysis(login: str, x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    """Return the explainable security score for one engineer plus stored history."""
+    if not re.fullmatch(r"[A-Za-z0-9-]{1,39}", login):
+        raise HTTPException(status_code=422, detail="invalid GitHub login")
+    require_api_key(x_api_key)
+
+    client = GitHubClient(load_settings().github_token)
+    try:
+        profile_data = client.get_user(login)
+        if not profile_data:
+            raise HTTPException(status_code=404, detail="engineer not found")
+        repos = client.list_user_repos(login, limit=100)
+    except GitHubError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    recommendation = score_candidate(login, repos, Profile.load())
+    history = get_history().engineer_history(login)
+    if recommendation is None:
+        return {
+            "login": login,
+            "score": None,
+            "matched_domains": [],
+            "breakdown": {},
+            "evidence": [],
+            "matched_repositories": [],
+            "history": history,
+        }
+
+    return {
+        "login": recommendation.login,
+        "score": recommendation.score,
+        "matched_domains": recommendation.matched_domains,
+        "breakdown": recommendation.breakdown,
+        "evidence": recommendation.evidence,
+        "matched_repositories": recommendation.matched_repos,
+        "history": history,
+    }
 
 
 @app.get("/api/public/engineers/{login}", response_model=PublicEngineerProfile, tags=["public"])

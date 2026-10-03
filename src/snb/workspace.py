@@ -45,6 +45,14 @@ class WorkspaceStore:
                     created_at TEXT NOT NULL,
                     FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
                 );
+                CREATE TABLE IF NOT EXISTS workspace_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    workspace_id TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    detail TEXT,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+                );
                 """
             )
 
@@ -63,6 +71,7 @@ class WorkspaceStore:
         now = self._now()
         with self._lock, self._connect() as db:
             db.execute("INSERT INTO workspaces(id,title,created_at,updated_at) VALUES(?,?,?,?)", (wid, title.strip(), now, now))
+            db.execute("INSERT INTO workspace_events(workspace_id,action,detail,created_at) VALUES(?,?,?,?)", (wid, "created", title.strip(), now))
         return self.get(wid)
 
     def get(self, workspace_id: str) -> dict[str, Any]:
@@ -72,10 +81,12 @@ class WorkspaceStore:
                 raise KeyError(workspace_id)
             items = db.execute("SELECT id,kind,value,label,source_url,created_at FROM workspace_items WHERE workspace_id=? ORDER BY id", (workspace_id,)).fetchall()
             notes = db.execute("SELECT id,body,source_url,created_at FROM workspace_notes WHERE workspace_id=? ORDER BY id", (workspace_id,)).fetchall()
+            events = db.execute("SELECT id,action,detail,created_at FROM workspace_events WHERE workspace_id=? ORDER BY id", (workspace_id,)).fetchall()
         data = dict(row)
         data["tags"] = json.loads(data["tags"])
         data["items"] = [dict(x) for x in items]
         data["notes"] = [dict(x) for x in notes]
+        data["timeline"] = [dict(x) for x in events]
         return data
 
     def list(self, limit: int = 50) -> list[dict[str, Any]]:
@@ -93,6 +104,7 @@ class WorkspaceStore:
             with self._lock, self._connect() as db:
                 cur=db.execute(f"UPDATE workspaces SET {', '.join(fields)}, updated_at=? WHERE id=?", values)
                 if cur.rowcount == 0: raise KeyError(workspace_id)
+                db.execute("INSERT INTO workspace_events(workspace_id,action,detail,created_at) VALUES(?,?,?,?)", (workspace_id, "updated", json.dumps({"status": status, "tags": tags}), now))
         return self.get(workspace_id)
 
     def add_item(self, workspace_id: str, kind: str, value: str, label: str | None = None, source_url: str | None = None) -> dict[str, Any]:
@@ -102,6 +114,7 @@ class WorkspaceStore:
             if not db.execute("SELECT 1 FROM workspaces WHERE id=?", (workspace_id,)).fetchone(): raise KeyError(workspace_id)
             db.execute("INSERT OR IGNORE INTO workspace_items(workspace_id,kind,value,label,source_url,created_at) VALUES(?,?,?,?,?,?)", (workspace_id,kind,value,label,source_url,now))
             db.execute("UPDATE workspaces SET updated_at=? WHERE id=?", (now,workspace_id))
+            db.execute("INSERT INTO workspace_events(workspace_id,action,detail,created_at) VALUES(?,?,?,?)", (workspace_id, "evidence_added", f"{kind}:{value}", now))
         return self.get(workspace_id)
 
     def add_note(self, workspace_id: str, body: str, source_url: str | None = None) -> dict[str, Any]:
@@ -111,6 +124,7 @@ class WorkspaceStore:
             if not db.execute("SELECT 1 FROM workspaces WHERE id=?", (workspace_id,)).fetchone(): raise KeyError(workspace_id)
             db.execute("INSERT INTO workspace_notes(workspace_id,body,source_url,created_at) VALUES(?,?,?,?)", (workspace_id,body.strip(),source_url,now))
             db.execute("UPDATE workspaces SET updated_at=? WHERE id=?", (now,workspace_id))
+            db.execute("INSERT INTO workspace_events(workspace_id,action,detail,created_at) VALUES(?,?,?,?)", (workspace_id, "note_added", body.strip()[:200], now))
         return self.get(workspace_id)
 
     def delete(self, workspace_id: str) -> None:

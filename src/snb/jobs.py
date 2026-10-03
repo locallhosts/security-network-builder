@@ -80,22 +80,37 @@ class JobQueue:
         return Job(row[0], row[1], json.loads(row[2]), row[3], row[4], row[5], row[6], row[7], row[8], row[9])
 
     def claim(self) -> Job | None:
-        with self._conn() as conn:
+        conn = self._conn()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
             row = conn.execute(
                 "SELECT id FROM jobs WHERE status='queued' AND available_at<=? ORDER BY created_at LIMIT 1",
                 (time.time(),),
             ).fetchone()
             if not row:
+                conn.commit()
                 return None
-            changed = conn.execute(
+            conn.execute(
                 "UPDATE jobs SET status='running',attempts=attempts+1,updated_at=? WHERE id=? AND status='queued'",
                 (_now(), row[0]),
-            ).rowcount
-        return self.get(row[0]) if changed else None
+            )
+            conn.commit()
+            return self.get(row[0])
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            if self._memory is None:
+                conn.close()
 
-    def succeed(self, job_id: str) -> Job:
+    def succeed(self, job_id: str, result: str = "") -> Job:
         with self._conn() as conn:
-            conn.execute("UPDATE jobs SET status='succeeded',updated_at=? WHERE id=?", (_now(), job_id))
+            changed = conn.execute(
+                "UPDATE jobs SET status='succeeded',result=?,lease_until=NULL,updated_at=? WHERE id=?",
+                (str(result)[:5000], _now(), job_id),
+            ).rowcount
+            if not changed:
+                raise KeyError(job_id)
         return self.get(job_id)
 
     def fail(self, job_id: str, error: str, *, retry_delay: float = 5.0) -> Job:
@@ -106,7 +121,7 @@ class JobQueue:
             attempts, max_attempts = row
             terminal = attempts >= max_attempts
             conn.execute(
-                "UPDATE jobs SET status=?,available_at=?,last_error=?,updated_at=? WHERE id=?",
+                "UPDATE jobs SET status=?,available_at=?,last_error=?,lease_until=NULL,updated_at=? WHERE id=?",
                 ("failed" if terminal else "queued",
                  time.time() + max(0.0, retry_delay), str(error)[:1000], _now(), job_id),
             )

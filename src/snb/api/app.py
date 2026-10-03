@@ -51,8 +51,7 @@ def load_settings() -> APISettings:
     )
 
 
-_SETTINGS = load_settings()
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(_SETTINGS.allowed_hosts))
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(load_settings().allowed_hosts))
 
 
 class HealthResponse(BaseModel):
@@ -100,11 +99,11 @@ _search_hits: dict[str, deque[float]] = defaultdict(deque)
 
 
 def get_history() -> History:
-    return History(_SETTINGS.history_db)
+    return History(load_settings().history_db)
 
 
 def require_api_key(value: str | None) -> None:
-    configured = _SETTINGS.api_key
+    configured = load_settings().api_key
     if configured and (value is None or not secrets.compare_digest(value, configured)):
         raise HTTPException(status_code=401, detail="invalid API key")
 
@@ -159,7 +158,7 @@ def search(
 ) -> SearchResponse:
     """Search public GitHub repositories. No private API key is exposed to browsers."""
     _check_search_rate(request)
-    client = GitHubClient(_SETTINGS.github_token)
+    client = GitHubClient(load_settings().github_token)
     try:
         items = client.search_repositories(q, per_page=limit)
     except GitHubError as exc:

@@ -54,9 +54,9 @@ class JobQueue:
         with self._conn() as conn:
             try:
                 conn.execute(
-                    "INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    "INSERT INTO jobs (id,kind,payload,idempotency_key,status,attempts,max_attempts,available_at,created_at,updated_at,last_error,result,lease_until) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (job_id, kind, json.dumps(payload, separators=(",", ":")), idempotency_key,
-                     "queued", 0, max_attempts, time.time(), now, now, ""),
+                     "queued", 0, max_attempts, time.time(), now, now, "", "", None),
                 )
             except sqlite3.IntegrityError:
                 if not idempotency_key:
@@ -70,12 +70,12 @@ class JobQueue:
     def get(self, job_id: str) -> Job:
         with self._conn() as conn:
             row = conn.execute(
-                "SELECT id,kind,payload,status,attempts,max_attempts,available_at,last_error FROM jobs WHERE id=?",
+                "SELECT id,kind,payload,status,attempts,max_attempts,available_at,last_error,result,lease_until FROM jobs WHERE id=?",
                 (job_id,),
             ).fetchone()
         if not row:
             raise KeyError(job_id)
-        return Job(row[0], row[1], json.loads(row[2]), row[3], row[4], row[5], row[6], row[7])
+        return Job(row[0], row[1], json.loads(row[2]), row[3], row[4], row[5], row[6], row[7], row[8], row[9])
 
     def claim(self) -> Job | None:
         with self._conn() as conn:

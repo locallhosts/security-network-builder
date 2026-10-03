@@ -55,6 +55,11 @@ summary{cursor:pointer;color:var(--accent)}.fallback-list{margin:12px 0 0;paddin
 </nav>
 </section>
 
+<section class="card" id="profile-card" aria-labelledby="profile-title" hidden>
+<h2 id="profile-title">Engineer profile</h2>
+<div id="profile" aria-live="polite"></div>
+</section>
+
 <section class="card" aria-labelledby="graph-title">
 <h2 id="graph-title">Community security graph</h2>
 <p class="muted">Relationships from the latest local analysis: shared repositories, organizations, and security domains.</p>
@@ -101,9 +106,36 @@ function renderResults(){
   const link=githubLink(item.url,'GitHub');if(link)top.appendChild(link);
   article.appendChild(top);
   const desc=document.createElement('div');text(desc,item.description||'No description');article.appendChild(desc);
-  const meta=document.createElement('div');meta.className='meta';text(meta,(item.language||'Unknown')+' · ★ '+Number(item.stars||0)+(item.owner?' · @'+item.owner:''));article.appendChild(meta);
+  const meta=document.createElement('div');meta.className='meta';text(meta,(item.language||'Unknown')+' · ★ '+Number(item.stars||0)+' · ');
+  if(item.owner){const owner=document.createElement('button');owner.type='button';owner.textContent='@'+item.owner;owner.addEventListener('click',()=>loadEngineer(item.owner));meta.appendChild(owner)}
+  article.appendChild(meta);
   results.appendChild(article);
  });
+}
+async function loadEngineer(login){
+ const card=document.querySelector('#profile-card'), profile=document.querySelector('#profile');
+ card.hidden=false;clear(profile);const loading=document.createElement('p');loading.className='muted';text(loading,'Loading @'+login+'…');profile.appendChild(loading);
+ card.scrollIntoView({behavior:'smooth',block:'start'});
+ try{
+  const r=await fetch('/api/public/engineers/'+encodeURIComponent(login),{headers:{Accept:'application/json'}});
+  const d=await r.json();if(!r.ok)throw new Error(d.detail||'Profile failed');
+  clear(profile);
+  const heading=document.createElement('div');heading.className='result-top';
+  const name=document.createElement('strong');text(name,d.name||('@'+d.login));heading.appendChild(name);
+  const link=githubLink(d.url,'GitHub profile');if(link)heading.appendChild(link);profile.appendChild(heading);
+  const bio=document.createElement('p');bio.className='muted';text(bio,d.bio||'No public bio.');profile.appendChild(bio);
+  const meta=document.createElement('div');meta.className='meta';text(meta,'@'+d.login+' · '+Number(d.followers||0)+' followers · '+Number(d.public_repos||0)+' public repositories');profile.appendChild(meta);
+  if(d.company){const company=document.createElement('p');company.className='meta';text(company,'Company: '+d.company);profile.appendChild(company)}
+  const title=document.createElement('h3');title.textContent='Recent public repositories';profile.appendChild(title);
+  const list=document.createElement('div');list.className='results';
+  (d.repositories||[]).forEach(repo=>{
+   const item=document.createElement('article');item.className='result';const top=document.createElement('div');top.className='result-top';
+   const repoName=document.createElement('strong');text(repoName,repo.name);top.appendChild(repoName);const repoLink=githubLink(repo.url,'GitHub');if(repoLink)top.appendChild(repoLink);item.appendChild(top);
+   const desc=document.createElement('div');text(desc,repo.description||'No description');item.appendChild(desc);
+   const m=document.createElement('div');m.className='meta';text(m,(repo.language||'Unknown')+' · ★ '+Number(repo.stars||0));item.appendChild(m);list.appendChild(item);
+  });
+  profile.appendChild(list);
+ }catch(err){clear(profile);const error=document.createElement('p');error.className='error';text(error,err.message||'Profile failed');profile.appendChild(error)}
 }
 async function search(){
  const value=q.value.trim();if(value.length<2)return;

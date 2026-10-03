@@ -157,6 +157,7 @@ async function loadEngineer(login){
   const d=await getJson("/api/public/engineers/"+encodeURIComponent(login));state.profile=d;$("#export-profile").disabled=false;clear(box);$("#profile-title").textContent="Engineer · @"+d.login;
   const left=el("div"),right=el("div");
   const head=el("div",{class:"result-top"},el("div",{},el("h3",{},d.name||("@"+d.login)),el("div",{class:"meta"},"@"+d.login+" · "+Number(d.followers||0).toLocaleString()+" followers · "+Number(d.public_repos||0).toLocaleString()+" public repositories")),githubLink(d.url,"GitHub profile")||"");
+  if(d.score!==null&&d.score!==undefined){left.appendChild(el("div",{class:"metric"},"Security score ",el("b",{},Number(d.score).toFixed(1))));left.appendChild(el("div",{class:"chips"},(d.matched_domains||[]).map(x=>el("span",{class:"chip"},x))));left.appendChild(el("h3",{},"Score evidence"));left.appendChild(el("ul",{class:"fallback"},(d.evidence||[]).map(x=>el("li",{},x))));}
   left.appendChild(head);left.appendChild(el("p",{class:"muted"},d.bio||"No public bio."));
   if(d.company)left.appendChild(el("p",{class:"meta"},"Company · "+d.company));
   left.appendChild(el("h3",{},"Security domains"));left.appendChild(el("div",{class:"chips"},(d.security_domains||[]).map(x=>el("span",{class:"chip"},x))));

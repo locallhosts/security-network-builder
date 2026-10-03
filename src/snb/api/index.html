@@ -1,1 +1,75 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Security Network Builder</title><style>body{font-family:system-ui;max-width:1000px;margin:auto;padding:30px;background:#0b1020;color:#e8edf7}input,button{padding:10px;border-radius:8px;border:1px solid #334155;background:#111827;color:inherit}input{width:70%}.card{background:#111827;border:1px solid #263247;border-radius:12px;padding:18px;margin:16px 0}.result{padding:12px 0;border-bottom:1px solid #263247}svg{width:100%;height:500px;background:#080d18}.muted{color:#94a3b8}</style></head><body><h1>Security Network Builder</h1><p class="muted">Security engineer discovery and community intelligence from public GitHub signals.</p><div class="card"><h2>Interactive search</h2><form id="search"><input id="q" minlength="2" placeholder="ebpf security, cloud security" required><button>Search</button></form><div id="results" class="muted">Search public GitHub repositories.</div></div><div class="card"><h2>Community security graph</h2><svg id="graph" viewBox="0 0 1000 500"></svg></div><script>const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));document.querySelector('#search').onsubmit=async e=>{e.preventDefault();let q=document.querySelector('#q').value.trim(),o=document.querySelector('#results');o.textContent='Searching...';try{let r=await fetch('/api/search?q='+encodeURIComponent(q)),d=await r.json();if(!r.ok)throw Error(d.detail||'Search failed');o.innerHTML=d.results.map(x=>'<div class="result"><b>'+esc(x.repository)+'</b> — '+esc(x.description||'No description')+'<br><span class="muted">'+esc(x.language||'Unknown')+' · ★ '+x.stars+' · <a href="'+esc(x.url)+'" target="_blank" rel="noopener">GitHub</a></span></div>').join('')||'No results.'}catch(x){o.textContent=x.message}};</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Security Network Builder</title>
+<style>
+:root{color-scheme:dark}body{font-family:system-ui,-apple-system,sans-serif;max-width:1100px;margin:auto;padding:30px;background:#0b1020;color:#e8edf7}
+h1{margin-bottom:6px}.muted{color:#94a3b8}.card{background:#111827;border:1px solid #263247;border-radius:14px;padding:18px;margin:18px 0}
+input,button{padding:11px 13px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:inherit}input{width:min(70%,560px)}
+button{cursor:pointer}.result{padding:13px 0;border-bottom:1px solid #263247}.result:last-child{border-bottom:0}
+a{color:#93c5fd}#status{margin-top:10px;min-height:22px}svg{width:100%;height:500px;background:#080d18;border-radius:10px}
+.node{cursor:pointer}.node circle{stroke:#cbd5e1;stroke-width:1}.node text{font-size:12px;fill:#e8edf7;pointer-events:none}.edge{stroke:#64748b;opacity:.55}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:13px}.pill{display:inline-block;padding:3px 7px;border:1px solid #334155;border-radius:999px}
+</style>
+</head>
+<body>
+<h1>Security Network Builder</h1>
+<p class="muted">Security engineer discovery and community intelligence from public GitHub signals.</p>
+
+<div class="card">
+<h2>Interactive repository search</h2>
+<form id="search"><input id="q" minlength="2" maxlength="100" placeholder="ebpf security, cloud security" required><button>Search</button></form>
+<div id="status" class="muted"></div>
+<div id="results" class="muted">Search public GitHub repositories.</div>
+</div>
+
+<div class="card">
+<h2>Community security graph</h2>
+<p class="muted">The graph shows relationships from the latest local analysis: shared repositories, organizations, and security domains.</p>
+<div class="legend"><span class="pill">node size = score</span><span class="pill">edge width = relationship strength</span></div>
+<svg id="graph" viewBox="0 0 1000 500" role="img" aria-label="Security community graph"></svg>
+</div>
+
+<script>
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const searchForm=document.querySelector('#search'), q=document.querySelector('#q'), results=document.querySelector('#results'), status=document.querySelector('#status');
+
+searchForm.onsubmit=async e=>{
+ e.preventDefault(); const value=q.value.trim(); status.textContent='Searching...'; results.innerHTML='';
+ try{
+  const r=await fetch('/api/search?q='+encodeURIComponent(value)); const d=await r.json();
+  if(!r.ok) throw Error(d.detail||'Search failed');
+  status.textContent=d.results.length+' result(s)';
+  results.innerHTML=d.results.map(x=>'<div class="result"><b>'+esc(x.repository)+'</b> — '+esc(x.description||'No description')+
+   '<br><span class="muted">'+esc(x.language||'Unknown')+' · ★ '+Number(x.stars||0)+' · <a href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer">GitHub</a></span></div>').join('')||'No results.';
+ }catch(err){status.textContent=''; results.textContent=err.message}
+};
+
+async function loadGraph(){
+ const svg=document.querySelector('#graph');
+ try{
+  const r=await fetch('/api/graph'); const g=await r.json(); renderGraph(g,svg);
+ }catch(err){svg.innerHTML='<text x="20" y="35" fill="#94a3b8">'+esc(err.message)+'</text>'}
+}
+function renderGraph(g,svg){
+ const nodes=g.nodes||[], edges=g.edges||[], W=1000,H=500;
+ svg.innerHTML='';
+ if(!nodes.length){svg.innerHTML='<text x="20" y="35" fill="#94a3b8">No graph data yet. Run SNB locally and save a run.</text>';return}
+ const positions={};
+ nodes.forEach((n,i)=>{const a=2*Math.PI*i/nodes.length;positions[n.login]={x:W/2+Math.cos(a)*Math.min(360,120+nodes.length*18),y:H/2+Math.sin(a)*Math.min(170,80+nodes.length*8)}});
+ const ns='http://www.w3.org/2000/svg';
+ const line=(x1,y1,x2,y2,w)=>{const el=document.createElementNS(ns,'line');el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);el.setAttribute('stroke-width',Math.max(1,Math.min(8,w)));el.classList.add('edge');svg.appendChild(el)};
+ edges.forEach(e=>{if(positions[e.a]&&positions[e.b])line(positions[e.a].x,positions[e.a].y,positions[e.b].x,positions[e.b].y,e.weight)});
+ nodes.forEach(n=>{
+  const p=positions[n.login], group=document.createElementNS(ns,'g');group.classList.add('node');
+  const c=document.createElementNS(ns,'circle');c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);c.setAttribute('r',String(8+Math.min(18,Number(n.score||0)/5)));
+  c.setAttribute('fill','none'); group.appendChild(c);
+  const t=document.createElementNS(ns,'text');t.setAttribute('x',p.x+13);t.setAttribute('y',p.y+4);t.textContent='@'+n.login;group.appendChild(t);svg.appendChild(group);
+ });
+}
+loadGraph();
+</script>
+</body>
+</html>

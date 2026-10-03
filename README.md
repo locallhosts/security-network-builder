@@ -81,7 +81,7 @@ Goal: establish discovery, scoring, relationships, persistence, reporting, and t
 Goal: expose the foundation through a stable FastAPI interface while protecting private data and validating public input.
 
 4. **FastAPI application**
-   - [~] Complete application/configuration boundary
+   - [x] Complete application/configuration boundary
    - [x] Health endpoint
    - [x] Root/public web response
    - [x] OpenAPI metadata and interactive API documentation
@@ -108,7 +108,7 @@ Goal: expose the foundation through a stable FastAPI interface while protecting 
    - [x] Run-not-found behavior
    - [x] Empty/non-empty graph behavior
    - [x] Security-header coverage
-   - [ ] Complete remaining API contract/regression coverage
+   - [x] Complete API contract/regression coverage
 
 **Phase 2 exit criteria:** all API routes have a documented contract, private data is protected, public inputs are validated/rate-limited, and the complete API suite is green.
 

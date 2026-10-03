@@ -17,6 +17,7 @@ Discover, analyze, and rank engineers on GitHub by cybersecurity specialization,
 - [Quick Start](#quick-start)
 - [Usage](#usage)
 - [Dashboard](#dashboard)
+- [Public Platform](#public-platform)
 - [Configuration](#configuration)
 - [How It Works](#how-it-works)
 - [Architecture](#architecture)
@@ -66,6 +67,8 @@ GitHub holds strong signals of real engineering work: repositories, topics, lang
 | **Organization analysis** | Shows which organizations concentrate the engineers you found. |
 | **Run history and diffs** | Every run is stored locally. See who is new, who dropped off, and whose score moved. |
 | **Local dashboard** | Ranking, interactive graph, score breakdowns, history, and private triage notes in the browser. |
+| **Public platform** | FastAPI web UI with public GitHub repository search, health checks, API documentation, and a read-only community graph. |
+| **Container deployment** | Docker/Compose for local validation plus a Render deployment manifest for a public service. |
 | **Explanations** | Deterministic offline explanations, with optional LLM-written ones (`--ai`). |
 | **Profile suggestion** | Proposes a profile from your own public repositories. |
 | **Preflight checks** | `snb doctor` validates your token, rate limits, profile, and paths before a run. |
@@ -163,7 +166,7 @@ snb --queries-per-domain 1            # quick run, fewer API calls
 snb --profile profiles/mine.yaml      # use a custom profile
 snb --expand 5                        # also analyze contributors of the top 5 engineers' repos
 snb --api rest                        # force REST (no token required)
-snb --ai                              # LLM explanations (requires ANTHROPIC_API_KEY)
+AI_PROVIDER=openai snb --ai       # LLM explanations with OpenAI\nAI_PROVIDER=anthropic snb --ai    # LLM explanations with Anthropic
 snb --no-report                       # print only, write no report files
 snb --include-ignored                 # include engineers you marked as ignored
 ```
@@ -228,6 +231,39 @@ The dashboard is a local, read-only view of your run history:
 - **Triage notes** (`reviewing`, `connected`, `ignored`, plus a private note). These are stored locally as your own notebook; nothing is sent to GitHub.
 
 The server binds to `127.0.0.1` only. See [Security and Privacy](#security-and-privacy) for its protections.
+
+---
+
+## Public Platform
+
+The repository includes a containerized FastAPI service for public, read-only discovery.
+
+### Local container test
+
+From the repository root:
+
+```bash
+cp deployment/.env.example deployment/.env
+docker compose -f deployment/docker-compose.yml up --build
+```
+
+Open `http://127.0.0.1:8765/`.
+
+The browser search endpoint is public and rate-limited in-process. Run history and engineer history remain protected by `API_KEY` when one is configured. FastAPI's interactive API documentation is available at `/docs`.
+
+### Render
+
+`deployment/render.yaml` defines the free Docker web service and its environment variables. Set the secrets in Render rather than committing them:
+
+- `GITHUB_TOKEN` — recommended for higher GitHub API limits
+- `API_KEY` — protects private run-history endpoints
+- `OPENAI_API_KEY` / `OPENAI_MODEL` — optional OpenAI explanations
+- `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` — optional Anthropic explanations
+- `AI_PROVIDER` — `offline`, `openai`, or `anthropic`
+
+The hosted service is intentionally read-only with respect to GitHub. Do not expose private triage data through a public deployment.
+
+> **Persistence:** the current history implementation uses SQLite. Render's free filesystem is not durable across service replacement/redeploys, so persistent hosted run history should use a managed PostgreSQL-backed history layer before relying on the service as a long-term hosted notebook.
 
 ---
 
@@ -433,7 +469,7 @@ Continuous integration (`.github/workflows/ci.yml`) runs the tests on Python 3.1
 - **Rate limits respected.** Requests back off on rate limiting, and partial results are kept if a limit is reached mid-run.
 - **No automated interaction.** Triage states such as `connected` are your own private notes.
 - **Hardened dashboard.** It binds to `127.0.0.1` only, validates the `Host` header (DNS-rebinding defense), requires a per-launch CSRF token for writes, and sends a strict Content Security Policy. All GitHub-sourced text is rendered as plain text, never as HTML, and links are restricted to `github.com`.
-- **Opt-in AI.** `--ai` sends only public repository metadata and computed scores to the Anthropic API, and instructs the model to treat GitHub text as untrusted data.
+- **Opt-in AI.** `--ai` sends only public repository metadata and computed scores to the selected OpenAI or Anthropic API, and instructs the model to treat GitHub text as untrusted data.
 - **Token hygiene.** If a token is ever committed, revoke it on GitHub immediately; deleting the commit is not enough.
 
 ---
@@ -455,11 +491,13 @@ Please follow [GitHub's Acceptable Use Policies](https://docs.github.com/en/site
 
 Possible next steps, in no particular order:
 
+- Durable PostgreSQL-backed hosted run history
 - Scheduled recurring runs with automatic diff summaries
-- Publishing to PyPI
+- Production-grade distributed rate limiting and abuse controls
 - Comparing multiple profiles side by side
 - Additional public signal sources beyond GitHub
 - Exporting the relationship graph to standard graph formats
+- Publishing to PyPI
 
 ---
 

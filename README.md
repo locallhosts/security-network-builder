@@ -57,12 +57,27 @@ GitHub holds strong signals of real engineering work: repositories, topics, lang
 
 ## Implementation Roadmap
 
-This roadmap is the project's build sequence. **Do not deploy the production service until the implementation phases below are complete and the local test/Docker validation is green.** Keep this section updated as work progresses so the project history and remaining work are visible to contributors and users.
+This roadmap is the **source of truth for the product**. We will implement it sequentially, verify every item locally, add tests, and only then mark it complete.
+
+### Product standard
+
+Security Network Builder is being built as a **real, public security-intelligence web platform**, not a mockup or static portfolio page.
+
+Every feature must satisfy these rules:
+
+1. **Real data** — no hard-coded users, repositories, scores, graph nodes, statistics, or fake API responses in production code.
+2. **Evidence first** — every intelligence claim must be traceable to public source data or a deterministic calculation.
+3. **Server-backed** — important filters, pagination, aggregation, and security controls must be enforced by the API.
+4. **Exportable** — users must be able to take their own search and analysis results with them.
+5. **Accessible** — graph information must also exist as structured data.
+6. **Secure by default** — untrusted GitHub content is data, never executable instructions; secrets never reach the browser.
+7. **Offline AI by default** — the platform works without an LLM. OpenAI and Anthropic are explicit opt-in integrations.
+8. **Observable and testable** — public capabilities receive API, failure-path, security, and UI/contract coverage as appropriate.
+9. **Honest product state** — a feature is not complete until it works against real data and passes acceptance criteria.
+10. **Public-safe** — only intentionally public GitHub information is exposed; private notes, credentials, and internal operations stay protected.
 
 ### Phase 1 — Foundation
-**Theme: Build the security-engineering core**
-
-Goal: establish discovery, scoring, relationships, persistence, reporting, and the local dashboard as a reliable foundation.
+**Status: COMPLETE**
 
 - [x] Core discovery and scoring foundation
 - [x] Security profile and configurable domains
@@ -73,200 +88,266 @@ Goal: establish discovery, scoring, relationships, persistence, reporting, and t
 - [x] Preflight/doctor checks
 - [x] Security and privacy baseline
 
-**Phase 1 exit criteria:** discovery, scoring, graph generation, local history, reporting, and dashboard functionality are implemented and covered by the local test suite.
-
 ### Phase 2 — API
-**Theme: Turn the foundation into a secure, testable service**
+**Status: COMPLETE**
 
-Goal: expose the foundation through a stable FastAPI interface while protecting private data and validating public input.
+- [x] FastAPI application/configuration boundary
+- [x] Health/readiness endpoints
+- [x] Public web response and OpenAPI documentation
+- [x] Public repository search
+- [x] Public graph endpoint
+- [x] Protected run/history/analysis endpoints
+- [x] Input validation and bounded parameters
+- [x] API-key authentication for private routes
+- [x] Search rate limiting
+- [x] GitHub URL validation and safe error handling
+- [x] API regression/contract tests
+- [x] Public engineer/user search endpoint
+- [x] Repository search filters and server-side sorting
 
-4. **FastAPI application**
-   - [x] Complete application/configuration boundary
-   - [x] Health endpoint
-   - [x] Root/public web response
-   - [x] OpenAPI metadata and interactive API documentation
-   - [x] Security middleware and response headers
-
-5. **API routes**
-   - [x] Public GitHub repository search
-   - [x] Public latest community graph
-   - [x] Protected run history
-   - [x] Protected latest run
-   - [x] Protected individual run lookup
-   - [x] Protected engineer history
-   - [x] Request validation and bounded parameters
-   - [x] API-key protection for private routes
-   - [x] Lightweight search rate limiting
-   - [x] Safe GitHub URL validation
-   - [x] Clear API error handling
-
-6. **API tests**
-   - [x] Health/root coverage
-   - [x] Search success and validation coverage
-   - [x] GitHub error handling coverage
-   - [x] Private-route authentication coverage
-   - [x] Run-not-found behavior
-   - [x] Empty/non-empty graph behavior
-   - [x] Security-header coverage
-   - [x] Complete API contract/regression coverage
-
-**Phase 2 exit criteria:** all API routes have a documented contract, private data is protected, public inputs are validated/rate-limited, and the complete API suite is green.
+**Exit criteria:** public data is discoverable through stable, validated endpoints; private data remains protected; failures are deterministic and tested.
 
 ### Phase 3 — Web Platform
-**Theme: Build the user-facing security intelligence platform**
+**Status: IN PROGRESS**
 
-Goal: make the API useful through a professional web experience.
+#### 3A. Professional public shell
+- [x] Professional light/white visual system
+- [x] Responsive desktop/tablet/mobile layout
+- [x] Clear product navigation
+- [x] Security-intelligence positioning and terminology
+- [ ] Accessibility audit and keyboard-only workflow
+- [ ] WCAG-oriented contrast/focus review
+- [ ] Browser compatibility verification
+- [ ] Consistent loading/skeleton states
+- [ ] Global error/retry UX
 
-7. **Search UI**
-   - [x] Search public repositories
-   - [x] Filters and server-backed pagination
-   - [x] Loading, empty, and error states
-   - [x] Evidence-first result cards
-   - [x] Secure rendering of GitHub content
+#### 3B. Real discovery
+- [x] Repository search against GitHub
+- [x] Language filtering
+- [x] Minimum-star filtering
+- [x] Server-backed pagination
+- [x] Sort by stars, updated, forks, help-wanted and relevance
+- [x] Engineer/user search against GitHub
+- [x] Engineer sorting
+- [x] Engineer → profile navigation
+- [x] Repository → engineer navigation
+- [x] CSV export
+- [x] JSON export
+- [ ] Advanced query builder
+- [ ] Search history for the current browser session
+- [ ] Saved searches stored locally or behind authenticated storage
+- [ ] Search result quality/evidence panel
+- [ ] Result deduplication and stable ordering
+- [ ] Search API usage/rate-limit visibility
 
-8. **Engineer profiles**
-   - [x] Public engineer profile page and sanitized API
-   - [x] Score and domain breakdown
-   - [x] Matching public repositories
-   - [x] Public GitHub activity view
-   - [x] Public organization context
-   - [x] Local analysis/history integration (protected profile-aware analysis)
+#### 3C. Engineer intelligence
+- [x] Public engineer profile
+- [x] Organizations
+- [x] Public repositories
+- [x] Public activity context
+- [ ] Score breakdown with evidence links
+- [ ] Security-domain classification
+- [ ] Skills/technology extraction from public repositories
+- [ ] Contribution/repository trend summaries
+- [ ] Repository quality and maintenance signals
+- [ ] Engineer-to-engineer relationship evidence
+- [ ] Profile comparison
+- [ ] Profile export
+- [ ] Shareable public profile URL without exposing private analysis
 
-9. **Graph visualization**
-   - [x] Interactive relationship graph foundation
-   - [x] Node/edge filtering
-   - [x] Community/domain views
-   - [x] Relationship details
-   - [x] Accessible non-graph fallback
-   - [x] Larger-graph performance testing
+#### 3D. Network intelligence
+- [x] Interactive relationship graph
+- [x] Relationship weights
+- [x] Community filtering
+- [x] Centrality filtering
+- [x] Node search
+- [x] Dragging nodes
+- [x] Relationship detail panel
+- [x] Accessible graph-data fallback
+- [x] SVG export
+- [x] Graph JSON export
+- [ ] Zoom/pan controls with reset
+- [ ] Graph legend and relationship-type legend
+- [ ] Edge-type filters
+- [ ] Node-type filters
+- [ ] Highlight neighborhood and shortest-path exploration
+- [ ] Community summary cards
+- [ ] Centrality/top-node ranking table
+- [ ] Large-graph progressive rendering
+- [ ] Graph query parameters validated server-side
+- [ ] Deterministic graph snapshot export
 
-**Phase 3 exit criteria:** a user can search, inspect an engineer, and explore relationships through the web platform.
+#### 3E. Intelligence workspace
+- [ ] Investigation/workspace model
+- [ ] Add repositories and engineers to a workspace
+- [ ] Notes and evidence references
+- [ ] Tags and analyst status
+- [ ] Timeline of investigation changes
+- [ ] Export complete investigation bundle
+- [ ] Delete/clear workspace data
+- [ ] Explicit privacy boundary between public data and private analyst notes
+
+#### 3F. Reporting and exports
+- [ ] Search report export
+- [ ] Engineer profile report export
+- [ ] Graph report export
+- [ ] Investigation bundle export
+- [x] CSV
+- [x] JSON
+- [x] SVG
+- [ ] Human-readable Markdown
+- [ ] Optional PDF report generated locally/server-side
+- [ ] Export metadata: query, timestamp, source, filters, schema version
+- [ ] No secrets or private notes in public exports
+
+#### 3G. Public-platform operations
+- [ ] Public API usage documentation
+- [ ] Rate-limit status and friendly retry messages
+- [ ] Abuse protection
+- [ ] Request correlation IDs
+- [ ] Structured application logging
+- [ ] Metrics for search/graph/profile requests
+- [ ] Error monitoring hooks without collecting unnecessary personal data
+- [ ] Cache policy for safe public GitHub data
+- [ ] Explicit data freshness indicators
+- [ ] GitHub upstream outage/degraded-state UX
+
+**Phase 3 exit criteria:** an unauthenticated visitor can perform real GitHub discovery, inspect evidence-backed engineer intelligence, explore a real relationship network, filter/export results, and understand freshness and limitations without accessing private data.
 
 ### Phase 4 — Intelligence Layer
-**Theme: Add controlled AI and automated discovery**
+**Status: COMPLETE CORE / EXTEND CAREFULLY**
 
-Goal: add optional intelligence without allowing untrusted GitHub content to control application behavior.
+- [x] OpenAI provider interface
+- [x] OpenAI secret handling
+- [x] Prompt/input boundaries
+- [x] Output validation
+- [x] Offline fallback
+- [x] OpenAI failure tests
+- [x] Anthropic provider interface
+- [x] Anthropic secret handling
+- [x] Prompt/input boundaries
+- [x] Output validation
+- [x] Offline fallback
+- [x] Anthropic failure tests
+- [x] Durable background jobs
+- [x] Retry/idempotency controls
+- [x] Job status API
+- [x] Resource/rate-limit controls
+- [ ] Verify every public web intelligence feature has a deterministic non-AI path
+- [ ] Optional AI explanations in the investigation workspace
+- [ ] AI provenance indicator showing when text is AI-generated
+- [ ] AI request audit metadata without storing secrets
+- [ ] AI output regression tests against prompt-injection-shaped GitHub content
 
-10. **OpenAI integration**
-   - [x] Provider interface
-   - [x] Secure configuration and secret handling
-   - [x] Prompt/input boundaries
-   - [x] Output validation
-   - [x] Offline fallback
-   - [x] Provider failure tests
+**AI contract:** offline remains the default. A remote provider is used only when explicitly configured and supplied with its required secret. No public visitor can silently cause an LLM request.
 
-11. **Anthropic integration**
-   - [x] Same provider interface
-   - [x] Secure configuration and secret handling
-   - [x] Prompt/input boundaries
-   - [x] Output validation
-   - [x] Offline fallback
-   - [x] Provider failure tests
+### Phase 5 — Production hardening
+**Status: IN PROGRESS**
 
-12. **Background discovery jobs**
-   - [x] Job lifecycle
-   - [x] Queue/worker implementation
-   - [x] Retry and backoff policy
-   - [x] Idempotency and duplicate protection
-   - [x] Job status API
-   - [x] Failure/recovery tests
-   - [x] Resource and rate-limit controls
+#### 5A. Configuration
+- [ ] Production environment configuration
+- [ ] Fail-closed production secret validation
+- [ ] Safe default configuration
+- [ ] Offline AI default verified in production configuration
+- [ ] Separate public/private configuration boundaries
+- [ ] Secret redaction tests
 
-**Phase 4 status:** provider boundaries, failure coverage, durable jobs, status reporting, bounded workers, and GitHub rate-limit handling are implemented.
+#### 5B. Health and operations
+- [ ] Deployment health checks
+- [ ] Readiness semantics verified
+- [ ] Startup/shutdown behavior verified
+- [ ] Dependency failure behavior
+- [ ] GitHub outage/degraded-mode behavior
+- [ ] Worker health/status
+- [ ] Operational runbook
 
-### Phase 5 — Production
-**Theme: Make the platform durable, authenticated, and deployable**
+#### 5C. Deployment and recovery
+- [x] CI test/build pipeline
+- [x] Security/dependency checks
+- [x] Container build and smoke test
+- [ ] Rollback procedure
+- [ ] Render deployment
+- [ ] Post-deployment verification
+- [ ] Production smoke tests
+- [ ] Backup/restore verification for PostgreSQL
+- [ ] Migration rollback strategy
 
-Goal: move from local application to production-grade service only after earlier phases are stable.
+**Production rule:** deployment is the final gate. We will not deploy while a required product, security, or operational acceptance criterion is unchecked.
 
-13. **PostgreSQL**
-   - [x] PostgreSQL history implementation
-   - [x] Schema and migration strategy
-   - [x] Data-access boundary
-   - [x] SQLite local compatibility where appropriate
-   - [x] Transaction and concurrency tests
+### Phase 6 — Advanced intelligence and ecosystem
+**Status: PLANNED**
 
-14. **API authentication**
-   - [x] Current API-key foundation
-   - [x] Production authentication design
-   - [x] Key/token rotation
-   - [x] Authorization boundaries
-   - [x] Audit/security logging
-   - [x] Abuse/rate-limit controls
-   - [x] Authentication regression tests
-
-15. **CI/CD deployment**
-   - [x] CI test/build pipeline fully green
-   - [x] Security/dependency checks
-   - [x] Container build and smoke test
-   - [ ] Production environment configuration
-   - [ ] Deployment health checks
-   - [ ] Rollback procedure
-   - [ ] Render deployment
-   - [ ] Post-deployment verification
-
-**Phase 5 exit criteria:** persistent storage, production authentication, secure CI/CD, container validation, operational checks, and deployment verification are complete.
-
-### Phase 3 — Web Platform
-
-7. **Search UI**
-8. **Engineer profiles**
-9. **Graph visualization**
-
-### Phase 4 — Intelligence Layer
-
-10. **OpenAI integration**
-11. **Anthropic integration**
-12. **Background discovery jobs**
-
-### Phase 5 — Production
-
-13. **PostgreSQL**
-14. **API authentication**
-15. **CI/CD deployment**
+- [ ] Scheduled discovery runs
+- [ ] Change detection and alerts
+- [ ] Watchlists
+- [ ] Saved investigations
+- [ ] Compare searches over time
+- [ ] Multi-profile comparison
+- [ ] Organization intelligence
+- [ ] Repository health intelligence
+- [ ] Security technology/skill taxonomy
+- [ ] Public graph snapshots and versioning
+- [ ] Standard graph formats: GraphML, GEXF, edge list
+- [ ] Optional integrations with other public data sources
+- [ ] Public API versioning
+- [ ] API SDK/client examples
+- [ ] PyPI release
+- [ ] Contributor/developer documentation
 
 ### Completion rule
 
-### Build Sequence
+For every unchecked item:
 
-The implementation order is intentional:
+1. Read the item and acceptance criteria.
+2. Inspect existing code before changing it.
+3. Implement the smallest real end-to-end slice.
+4. Add positive, negative, security, and regression tests as applicable.
+5. Test with real public data locally where network access is appropriate.
+6. Verify secrets and private state cannot cross the public boundary.
+7. Update documentation.
+8. Run the complete local suite.
+9. Only then mark [x].
+10. Move to the next item.
 
-**Foundation → API → Web Platform → Intelligence → Production**
-
-For every phase:
-
-1. Read the roadmap before coding.
-2. Implement the next unchecked item.
-3. Add or update tests.
-4. Run the local test suite.
-5. Review security boundaries and failure cases.
-6. Mark the item `[x]` only when it is actually finished.
-7. Move to the next item.
-
-Production deployment is the final milestone, not an intermediate step. The README roadmap is the source-of-truth checklist for what we build and what remains.
-
----
-
+The roadmap is deliberately detailed so we do not skip features, fake completion, or turn the platform into a collection of disconnected demos.
 ## Key Features
 
-| Capability | Description |
-|---|---|
-| **Profile-driven discovery** | Define your security domains, keywords, and search queries in YAML. The tool searches GitHub accordingly. |
-| **Explainable scoring** | Domain match, recent activity, traction, language fit, and reputation, each itemized in the report. |
-| **GraphQL and REST** | With a token, GraphQL batches 10 engineers per request. Without one, it falls back to REST. |
-| **Reputation signals** | Contribution volume, code review activity, and account tenure, with followers capped at a minor share. |
-| **Relationship graph** | Co-contribution, shared organizations, and overlapping domains produce edges, centrality, and communities. |
-| **Contributor expansion** | `--expand N` finds and scores contributors of the top engineers' repositories. |
-| **Organization analysis** | Shows which organizations concentrate the engineers you found. |
-| **Run history and diffs** | Every run is stored locally. See who is new, who dropped off, and whose score moved. |
-| **Local dashboard** | Ranking, interactive graph, score breakdowns, history, and private triage notes in the browser. |
-| **Public platform** | FastAPI web UI with public GitHub repository search, health checks, API documentation, and a read-only community graph. |
-| **Container deployment** | Docker/Compose for local validation plus a Render deployment manifest for a public service. |
-| **Explanations** | Deterministic offline explanations, with optional LLM-written ones (`--ai`). |
-| **Profile suggestion** | Proposes a profile from your own public repositories. |
-| **Preflight checks** | `snb doctor` validates your token, rate limits, profile, and paths before a run. |
+The product is designed as a public security-intelligence platform built on real GitHub data.
 
----
+| Capability | Current state |
+|---|---|
+| **Public repository discovery** | Real GitHub Search API with bounded filters, pagination and sorting |
+| **Public engineer discovery** | Real GitHub user search with profile navigation |
+| **Evidence-backed profiles** | Public repositories, organizations, activity and engineering signals |
+| **Security-domain intelligence** | Configurable domains, keywords and explainable scoring |
+| **Relationship intelligence** | Real repository/org/domain relationships, weights, centrality and communities |
+| **Interactive network analysis** | Filtering, node inspection, dragging and accessible fallback data |
+| **Search exports** | CSV and JSON |
+| **Graph exports** | SVG and JSON |
+| **Local investigations** | Planned workspace for notes, evidence, tags and analyst workflow |
+| **Reports** | Planned Markdown, JSON and optional PDF export |
+| **Data freshness** | Planned source timestamps and degraded/upstream-state indicators |
+| **API** | FastAPI with public/private boundaries and OpenAPI |
+| **Background jobs** | Durable queue with idempotency, retries and rate controls |
+| **Optional AI** | OpenAI/Anthropic behind explicit configuration |
+| **Offline AI default** | **Yes — deterministic offline behavior is the default** |
+| **Production container** | Docker image, health check and CI smoke test |
+| **Privacy boundary** | Public GitHub intelligence is separate from private analyst data |
+
+### Product quality bar
+
+We are intentionally not building:
+
+- fake graph nodes to make the UI look populated
+- invented statistics
+- simulated GitHub profiles
+- client-only filters presented as server-side intelligence
+- fake AI explanations
+- hidden browser API calls containing private credentials
+- automatic contact, follow, star, or message behavior
+- private-data scraping
+
+A demo state may use fixtures only inside tests. Production UI and API paths must use actual data or explicitly display that no data is available.
 
 ## Quick Start
 
@@ -682,17 +763,17 @@ Please follow [GitHub's Acceptable Use Policies](https://docs.github.com/en/site
 
 ## Future Work
 
-Possible next steps, in no particular order:
+Future work is tracked in the numbered roadmap above. We do not use this section as a second, conflicting checklist.
 
-- Durable PostgreSQL-backed hosted run history
-- Scheduled recurring runs with automatic diff summaries
-- Production-grade distributed rate limiting and abuse controls
-- Comparing multiple profiles side by side
-- Additional public signal sources beyond GitHub
-- Exporting the relationship graph to standard graph formats
-- Publishing to PyPI
+Priority after the current web-platform work:
 
----
+1. Finish the professional discovery, profile, and graph experience.
+2. Build the investigation workspace and evidence model.
+3. Complete export/reporting capabilities.
+4. Add operational visibility, abuse controls, and freshness indicators.
+5. Finish production hardening and rollback procedures.
+6. Deploy only after the production gate is green.
+7. Then expand into scheduled intelligence, watchlists, organization intelligence, and ecosystem integrations.
 
 ## Why This Project Exists
 

@@ -49,8 +49,8 @@ footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
 <label class="field">Language<select id="language"><option value="">Any language</option></select></label>
 <label class="field">Minimum stars<input id="min-stars" type="number" min="0" max="1000000" value="0"></label>
 <label class="field">Sort<select id="repo-sort"><option value="stars">Stars</option><option value="updated">Recently updated</option><option value="forks">Forks</option><option value="help-wanted-issues">Help wanted</option><option value="best-match">Best match</option></select></label>
-<button class="btn primary" type="submit">Search</button>
-</form>
+<button class="btn primary" type="submit">Search</button><button class="btn" id="advanced-toggle" type="button" aria-expanded="false">Advanced</button>
+</form><div id="advanced-query" class="toolbar" hidden><label class="field">Owner<input id="owner" maxlength="39" placeholder="github-login"></label><label class="field">Topic<input id="topic" maxlength="50" placeholder="eBPF"></label><label class="field">Archived<select id="archived"><option value="">Any</option><option value="false">Exclude archived</option><option value="true">Archived only</option></select></label><label class="field">Forks<select id="fork"><option value="">Any</option><option value="false">Exclude forks</option><option value="true">Forks only</option></select></label></div>
 </div>
 
 <div id="user-search" hidden>
@@ -80,15 +80,16 @@ footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
 <label class="field">Find node<input id="node-filter" type="search" placeholder="@login"></label>
 <button class="btn" id="apply-graph" type="button">Apply</button><button class="btn" id="zoom-out" type="button" aria-label="Zoom out">−</button><button class="btn" id="zoom-in" type="button" aria-label="Zoom in">+</button><button class="btn" id="reset-graph" type="button">Reset view</button>
 </div>
-<div class="status" id="graph-status" aria-live="polite"></div>
+<div class="status" id="graph-status" aria-live="polite"></div><div class="graph-tools"><label class="field">Edge type<select id="edge-type"><option value="">All relationships</option><option value="contributor">Repository contribution</option><option value="organization">Shared organization</option><option value="domain">Shared security domains</option></select></label></div>
 <div class="graph-wrap"><svg id="graph-svg" viewBox="0 0 1200 650" role="img" aria-label="Interactive security community graph"></svg><div class="graph-hint">Scroll to zoom · drag empty space to pan · drag nodes · click a node for profile</div></div>
-<div class="graph-bottom"><div class="data-box"><h3>Graph legend</h3><div class="chips"><span class="chip">Blue · community 0</span><span class="chip">Purple · community 1</span><span class="chip">Green · community 3</span><span class="chip">Node size · score</span><span class="chip">Edge width · relationship weight</span></div></div><div class="data-box"><h3>Relationship details</h3><div id="edge-details" class="muted">Select a node to inspect its relationships.</div></div><div class="data-box"><h3>Accessible graph data</h3><ul id="graph-fallback" class="fallback"></ul></div></div>
+<div class="graph-bottom"><div class="data-box"><h3>Community summary</h3><div id="community-summary" class="fallback"></div></div><div class="data-box"><h3>Centrality ranking</h3><ol id="centrality-ranking" class="fallback"></ol></div><div class="data-box"><h3>Graph legend</h3><div class="chips"><span class="chip">Blue · community 0</span><span class="chip">Purple · community 1</span><span class="chip">Green · community 3</span><span class="chip">Node size · score</span><span class="chip">Edge width · relationship weight</span></div></div><div class="data-box"><h3>Relationship details</h3><div id="edge-details" class="muted">Select a node to inspect its relationships.</div></div><div class="data-box"><h3>Accessible graph data</h3><ul id="graph-fallback" class="fallback"></ul></div></div>
 </section>
 </main>
 <footer class="shell">Security Network Builder · public, read-only GitHub discovery · GitHub content is treated as untrusted input.</footer>
 
 <script>
 const state={mode:"repos",query:"",page:1,limit:12,results:[],sort:"stars",profile:null};
+const searchHistory=JSON.parse(localStorage.getItem("snb-search-history")||"[]");
 let graphState={nodes:[],edges:[],communities:[]}, view={scale:1,tx:0,ty:0}, selectedNode=null;
 const $=s=>document.querySelector(s);
 function clear(el){while(el.firstChild)el.removeChild(el.firstChild)}
@@ -135,9 +136,9 @@ async function search(){
  try{
   const params={q,limit:state.limit,page:state.page,sort:state.sort};
   let d;
-  if(state.mode==="repos"){params.language=$("#language").value;params.min_stars=$("#min-stars").value;d=await getJson(apiUrl("/api/search",params))}
+  if(state.mode==="repos"){params.language=$("#language").value;params.min_stars=$("#min-stars").value;params.owner=$("#owner").value.trim();params.topic=$("#topic").value.trim();params.archived=$("#archived").value;params.fork=$("#fork").value;d=await getJson(apiUrl("/api/search",params))}
   else d=await getJson(apiUrl("/api/users/search",params));
-  state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults();
+  state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults(); if(state.mode==="repos"){searchHistory.unshift({q,language:params.language||"",min_stars:params.min_stars||"0",sort:params.sort,owner:params.owner||"",topic:params.topic||"",at:new Date().toISOString()});localStorage.setItem("snb-search-history",JSON.stringify(searchHistory.slice(0,20)))}
   setStatus(state.results.length+" result(s) on page "+d.page,"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit;$("#export-results").disabled=!state.results.length;$("#export-json").disabled=!state.results.length;
  }catch(e){clear($("#results"));$("#results").appendChild(el("div",{class:"empty"},e.message));setStatus(e.message,"error");$("#export-results").disabled=true;$("#export-json").disabled=true}
 }
@@ -145,7 +146,7 @@ async function page(delta){
  const target=state.page+delta;if(target<1||!state.query)return;state.page=target;setStatus("Loading page "+target+"…");$("#prev").disabled=$("#next").disabled=true;
  try{
   const params={q:state.query,limit:state.limit,page:target,sort:state.sort};let d;
-  if(state.mode==="repos"){params.language=$("#language").value;params.min_stars=$("#min-stars").value;d=await getJson(apiUrl("/api/search",params))}
+  if(state.mode==="repos"){params.language=$("#language").value;params.min_stars=$("#min-stars").value;params.owner=$("#owner").value.trim();params.topic=$("#topic").value.trim();params.archived=$("#archived").value;params.fork=$("#fork").value;d=await getJson(apiUrl("/api/search",params))}
   else d=await getJson(apiUrl("/api/users/search",params));
   state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults();setStatus(state.results.length+" result(s) on page "+d.page,"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit
  }catch(e){state.page=Math.max(1,target-delta);setStatus(e.message,"error");$("#prev").disabled=state.page<=1}
@@ -172,7 +173,7 @@ async function loadEngineer(login){
 document.querySelectorAll(".tab").forEach(tab=>tab.addEventListener("click",()=>{
  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));tab.classList.add("active");state.mode=tab.dataset.tab;state.results=[];state.query="";state.page=1;clear($("#results"));$("#export-results").disabled=true;$("#export-json").disabled=true;$("#page-label").textContent="Page 1";$("#prev").disabled=$("#next").disabled=true;$("#repo-search").hidden=state.mode!=="repos";$("#user-search").hidden=state.mode!=="users";setStatus("")
 }));
-$("#repo-form").addEventListener("submit",e=>{e.preventDefault();search()});$("#user-form").addEventListener("submit",e=>{e.preventDefault();search()});$("#prev").addEventListener("click",()=>page(-1));$("#next").addEventListener("click",()=>page(1));$("#close-profile").addEventListener("click",()=>$("#profile-card").hidden=true);
+$("#repo-form").addEventListener("submit",e=>{e.preventDefault();search()});$("#advanced-toggle").addEventListener("click",()=>{const n=$("#advanced-query"),open=n.hidden;n.hidden=!open;$("#advanced-toggle").setAttribute("aria-expanded",String(open))});$("#user-form").addEventListener("submit",e=>{e.preventDefault();search()});$("#prev").addEventListener("click",()=>page(-1));$("#next").addEventListener("click",()=>page(1));$("#close-profile").addEventListener("click",()=>$("#profile-card").hidden=true);
 
 $("#export-json").addEventListener("click",()=>{if(state.results.length)download(state.mode==="repos"?"snb-repositories.json":"snb-engineers.json",JSON.stringify(state.results,null,2),"application/json")});
 $("#export-profile").addEventListener("click",()=>{if(state.profile)download("snb-engineer-"+state.profile.login+".json",JSON.stringify(state.profile,null,2),"application/json")});
@@ -183,9 +184,9 @@ $("#export-results").addEventListener("click",()=>{
 });
 
 function graphFiltered(){
- const min=Number($("#centrality").value||0),comm=$("#community").value,needle=$("#node-filter").value.trim().toLowerCase();
+ const min=Number($("#centrality").value||0),comm=$("#community").value,needle=$("#node-filter").value.trim().toLowerCase(),edgeType=$("#edge-type").value;
  const nodes=(graphState.nodes||[]).filter(n=>Number(n.centrality||0)>=min&&(!comm||String(n.community)===comm)&&(!needle||String(n.login).toLowerCase().includes(needle)));
- const allowed=new Set(nodes.map(n=>n.login));const edges=(graphState.edges||[]).filter(e=>allowed.has(e.a)&&allowed.has(e.b));
+ const allowed=new Set(nodes.map(n=>n.login));const edges=(graphState.edges||[]).filter(e=>allowed.has(e.a)&&allowed.has(e.b)&&(!edgeType||((edgeType==="contributor")&&(e.reasons||[]).some(x=>String(x).startsWith("both contribute")))||((edgeType==="organization")&&(e.reasons||[]).some(x=>String(x).startsWith("both in org")))||((edgeType==="domain")&&(e.reasons||[]).some(x=>String(x).includes("shared domains")))));
  return {nodes,edges};
 }
 function graphColor(id){const palette=["#1769e0","#7c3aed","#0891b2","#15803d","#c2410c","#be123c","#475569"];return palette[Math.abs(Number(id)||0)%palette.length]}
@@ -225,12 +226,12 @@ $("#graph-svg").addEventListener("pointerdown",ev=>{if(ev.target.closest(".node"
 $("#graph-svg").addEventListener("pointermove",ev=>{if(!pan)return;const rect=$("#graph-svg").getBoundingClientRect();view.tx=pan.tx+(ev.clientX-pan.x)*1200/rect.width;view.ty=pan.ty+(ev.clientY-pan.y)*650/rect.height;setGraphTransform()});
 $("#graph-svg").addEventListener("pointerup",()=>{pan=null});
 $("#zoom-in").addEventListener("click",()=>zoomGraph(1.2));$("#zoom-out").addEventListener("click",()=>zoomGraph(.8333));
-$("#apply-graph").addEventListener("click",drawGraph);$("#reset-graph").addEventListener("click",()=>{$("#community").value="";$("#centrality").value="0";$("#node-filter").value="";view={scale:1,tx:0,ty:0};drawGraph()});
+$("#apply-graph").addEventListener("click",drawGraph);$("#edge-type").addEventListener("change",drawGraph);$("#reset-graph").addEventListener("click",()=>{$("#community").value="";$("#centrality").value="0";$("#node-filter").value="";$("#edge-type").value="";view={scale:1,tx:0,ty:0};drawGraph()});
 $("#download-graph").addEventListener("click",()=>download("security-network-graph.json",JSON.stringify(graphState,null,2),"application/json"));
 $("#download-svg").addEventListener("click",()=>{const clone=$("#graph-svg").cloneNode(true);clone.setAttribute("xmlns","http://www.w3.org/2000/svg");download("security-network-graph.svg",new XMLSerializer().serializeToString(clone),"image/svg+xml")});
 
 async function loadGraph(){
- try{graphState=await getJson("/api/graph");const c=$("#community");clear(c);c.appendChild(el("option",{value:""},"All communities"));(graphState.communities||[]).forEach(x=>c.appendChild(el("option",{value:String(x.id)},"Community "+x.id+" · "+x.size+" members")));$("#metric-nodes").textContent=(graphState.nodes||[]).length;$("#metric-edges").textContent=(graphState.edges||[]).length;$("#metric-communities").textContent=(graphState.communities||[]).length;drawGraph()}catch(e){setGraphStatus(e.message)}
+ try{graphState=await getJson("/api/graph");const c=$("#community");clear(c);c.appendChild(el("option",{value:""},"All communities"));(graphState.communities||[]).forEach(x=>c.appendChild(el("option",{value:String(x.id)},"Community "+x.id+" · "+x.size+" members")));$("#metric-nodes").textContent=(graphState.nodes||[]).length;$("#metric-edges").textContent=(graphState.edges||[]).length;$("#metric-communities").textContent=(graphState.communities||[]).length;const cs=$("#community-summary");clear(cs);(graphState.communities||[]).forEach(c=>cs.appendChild(el("div",{class:"meta"},"Community "+c.id+" · "+c.size+" members · "+(c.top_domain||"mixed"))));const rank=$("#centrality-ranking");clear(rank);[...(graphState.nodes||[])].sort((a,b)=>Number(b.centrality)-Number(a.centrality)).slice(0,15).forEach(n=>rank.appendChild(el("li",{},el("button",{class:"btn",onclick:()=>showNode(n.login)},"@"+n.login)," · "+Number(n.centrality).toFixed(2))));drawGraph()}catch(e){setGraphStatus(e.message)}
 }
 loadGraph();
 </script>

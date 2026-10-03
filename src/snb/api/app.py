@@ -152,7 +152,8 @@ _search_hits: dict[str, deque[float]] = defaultdict(deque)
 
 
 def get_history() -> History:
-    return History(load_settings().history_db)
+    settings = load_settings()
+    return History(settings.history_db, database_url=os.environ.get("SNB_DATABASE_URL"))
 
 
 def get_jobs() -> JobQueue:

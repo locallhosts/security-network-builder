@@ -30,6 +30,8 @@ class Job:
     max_attempts: int
     available_at: float
     last_error: str
+    result: str
+    lease_until: float | None
 
 class JobQueue:
     def __init__(self, path: str | Path = "data/jobs.db") -> None:

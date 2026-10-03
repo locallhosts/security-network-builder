@@ -36,7 +36,7 @@ footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
 <main class="shell">
 <section class="hero">
 <div><div class="eyebrow">Security intelligence platform</div><h1>Find the people, projects and relationships behind security engineering.</h1><p>Search public GitHub repositories and engineers, inspect evidence, and explore the security community as an interactive network. Read-only, evidence-first, and designed for serious research.</p></div>
-<div class="hero-card"><div class="metrics"><div class="metric"><b id="metric-nodes">—</b><span>graph nodes</span></div><div class="metric"><b id="metric-edges">—</b><span>relationships</span></div><div class="metric"><b id="metric-communities">—</b><span>communities</span></div></div></div>
+<div class="hero-card"><div class="metrics"><div class="metric"><b id="metric-nodes">—</b><span>graph nodes</span></div><div class="metric"><b id="metric-edges">—</b><span>relationships</span></div><div class="metric"><b id="metric-communities">—</b><span>communities</span></div></div><div id="rate-status" class="meta" style="margin-top:10px">Checking GitHub API capacity…</div></div></div>
 </section>
 
 <section class="panel" id="search">
@@ -233,11 +233,12 @@ $("#apply-graph").addEventListener("click",drawGraph);$("#edge-type").addEventLi
 $("#download-graph").addEventListener("click",()=>download("security-network-graph.json",JSON.stringify(graphState,null,2),"application/json"));
 $("#download-svg").addEventListener("click",()=>{const clone=$("#graph-svg").cloneNode(true);clone.setAttribute("xmlns","http://www.w3.org/2000/svg");download("security-network-graph.svg",new XMLSerializer().serializeToString(clone),"image/svg+xml")});
 
+async function loadUsage(){try{const d=await getJson("/api/usage");const r=d.search||{};const left=r.remaining!==undefined?r.remaining:"—";const limit=r.limit!==undefined?r.limit:"—";$("#rate-status").textContent="GitHub Search API · "+left+" / "+limit+" remaining";}catch(e){$("#rate-status").textContent="GitHub capacity unavailable · retry if searches fail";}}
 async function loadGraph(){
  try{graphState=await getJson("/api/graph");const c=$("#community");clear(c);c.appendChild(el("option",{value:""},"All communities"));(graphState.communities||[]).forEach(x=>c.appendChild(el("option",{value:String(x.id)},"Community "+x.id+" · "+x.size+" members")));$("#metric-nodes").textContent=(graphState.nodes||[]).length;$("#metric-edges").textContent=(graphState.edges||[]).length;$("#metric-communities").textContent=(graphState.communities||[]).length;const cs=$("#community-summary");clear(cs);(graphState.communities||[]).forEach(c=>cs.appendChild(el("div",{class:"meta"},"Community "+c.id+" · "+c.size+" members · "+(c.top_domain||"mixed"))));const rank=$("#centrality-ranking");clear(rank);[...(graphState.nodes||[])].sort((a,b)=>Number(b.centrality)-Number(a.centrality)).slice(0,15).forEach(n=>rank.appendChild(el("li",{},el("button",{class:"btn",onclick:()=>showNode(n.login)},"@"+n.login)," · "+Number(n.centrality).toFixed(2))));drawGraph()}catch(e){setGraphStatus(e.message)}
 }
 const initialEngineer=new URLSearchParams(location.search).get("engineer");if(initialEngineer)loadEngineer(initialEngineer);
-loadGraph();
+loadUsage();loadGraph();
 </script>
 </body>
 </html>

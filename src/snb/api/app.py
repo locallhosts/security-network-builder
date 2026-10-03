@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import secrets
 import time
 from collections import defaultdict, deque
@@ -81,6 +82,30 @@ class GraphResponse(BaseModel):
     nodes: list[dict[str, Any]]
     edges: list[dict[str, Any]]
     communities: list[Any]
+
+
+class PublicRepository(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    description: str | None
+    stars: int = Field(ge=0)
+    language: str | None
+    url: str | None
+
+
+class PublicEngineerProfile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    login: str
+    name: str | None
+    bio: str | None
+    company: str | None
+    followers: int = Field(ge=0)
+    public_repos: int = Field(ge=0)
+    created_at: str | None
+    url: str | None
+    repositories: list[PublicRepository]
 
 
 def _public_github_url(value: Any) -> str | None:
@@ -217,6 +242,47 @@ def get_run(run_id: int, x_api_key: str | None = Header(default=None)) -> dict[s
 def engineer(login: str, x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
     require_api_key(x_api_key)
     return {"login": login, "history": get_history().engineer_history(login)}
+
+
+@app.get("/api/public/engineers/{login}", response_model=PublicEngineerProfile, tags=["public"])
+def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
+    """Return a sanitized public GitHub engineer profile."""
+    _check_search_rate(request)
+    if not re.fullmatch(r"[A-Za-z0-9-]{1,39}", login):
+        raise HTTPException(status_code=422, detail="invalid GitHub login")
+
+    client = GitHubClient(load_settings().github_token)
+    try:
+        profile = client.get_user(login)
+        if not profile:
+            raise HTTPException(status_code=404, detail="engineer not found")
+        repositories = client.list_user_repos(login, limit=12)
+    except GitHubError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    public_repositories = []
+    for repo in repositories:
+        public_repositories.append(
+            PublicRepository(
+                name=str(repo.get("name") or ""),
+                description=repo.get("description"),
+                stars=max(0, int(repo.get("stargazers_count") or 0)),
+                language=repo.get("language"),
+                url=_public_github_url(repo.get("html_url")),
+            )
+        )
+
+    return PublicEngineerProfile(
+        login=login,
+        name=profile.get("name"),
+        bio=profile.get("bio"),
+        company=profile.get("company"),
+        followers=max(0, int(profile.get("followers") or 0)),
+        public_repos=max(0, int(profile.get("public_repos") or 0)),
+        created_at=profile.get("created_at"),
+        url=_public_github_url(profile.get("html_url")),
+        repositories=public_repositories,
+    )
 
 
 @app.get("/api/graph", response_model=GraphResponse, tags=["public"])

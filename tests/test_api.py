@@ -27,7 +27,7 @@ def test_search_is_public_even_when_api_key_is_configured(monkeypatch):
     monkeypatch.setenv("API_KEY", "secret")
     monkeypatch.setattr(
         "snb.api.app.GitHubClient.search_repositories",
-        lambda self, query, per_page=30: [{"full_name": "acme/ebpf", "description": "runtime security", "stargazers_count": 4, "language": "Go", "owner": {"login": "acme"}, "html_url": "https://github.com/acme/ebpf"}],
+        lambda self, query, per_page=30, page=1: [{"full_name": "acme/ebpf", "description": "runtime security", "stargazers_count": 4, "language": "Go", "owner": {"login": "acme"}, "html_url": "https://github.com/acme/ebpf"}],
     )
     client = TestClient(app)
     response = client.get("/api/search?q=ebpf")
@@ -44,7 +44,7 @@ def test_graph_is_public_even_when_api_key_is_configured(monkeypatch):
 def test_security_headers_and_github_url_validation(monkeypatch):
     monkeypatch.setattr(
         "snb.api.app.GitHubClient.search_repositories",
-        lambda self, query, per_page=30: [
+        lambda self, query, per_page=30, page=1: [
             {"full_name": "acme/safe", "html_url": "https://github.com/acme/safe"},
             {"full_name": "acme/unsafe", "html_url": "https://evil.example/acme/unsafe"},
         ],
@@ -62,6 +62,7 @@ def test_search_validates_query_and_limit():
     client = TestClient(app)
     assert client.get("/api/search?q=x").status_code == 422
     assert client.get("/api/search?q=security&limit=31").status_code == 422
+    assert client.get("/api/search?q=security&page=35").status_code == 422
 
 
 def test_search_translates_github_error_to_502(monkeypatch):
@@ -195,7 +196,7 @@ def test_public_response_models_are_exposed_in_openapi():
 def test_search_response_contract_rejects_unexpected_upstream_shape(monkeypatch):
     monkeypatch.setattr(
         "snb.api.app.GitHubClient.search_repositories",
-        lambda self, query, per_page=30: [
+        lambda self, query, per_page=30, page=1: [
             {"full_name": "acme/valid", "stargazers_count": 3, "html_url": "https://github.com/acme/valid"},
             {"full_name": "acme/bad", "stargazers_count": "not-an-integer", "html_url": "https://github.com/acme/bad"},
         ],

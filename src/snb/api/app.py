@@ -72,6 +72,8 @@ class SearchResult(BaseModel):
 
 class SearchResponse(BaseModel):
     query: str
+    page: int = Field(ge=1)
+    limit: int = Field(ge=1, le=30)
     results: list[SearchResult]
 
 
@@ -155,12 +157,13 @@ def search(
     request: Request,
     q: str = Query(..., min_length=2, max_length=100),
     limit: int = Query(10, ge=1, le=30),
+    page: int = Query(1, ge=1, le=34),
 ) -> SearchResponse:
     """Search public GitHub repositories. No private API key is exposed to browsers."""
     _check_search_rate(request)
     client = GitHubClient(load_settings().github_token)
     try:
-        items = client.search_repositories(q, per_page=limit)
+        items = client.search_repositories(q, per_page=limit, page=page)
     except GitHubError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     results = []
@@ -176,7 +179,7 @@ def search(
                 "url": _public_github_url(item.get("html_url")),
             }
         )
-    return SearchResponse(query=q, results=results)
+    return SearchResponse(query=q, page=page, limit=limit, results=results)
 
 
 @app.get("/api/runs", tags=["private"])

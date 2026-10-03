@@ -47,3 +47,23 @@ def test_org_summary_ranks_shared_orgs_first():
     assert summary[0]["login"] in {"cilium", "aws"} and len(summary[0]["members"]) == 2
     cilium = next(o for o in summary if o["login"] == "cilium")
     assert cilium["total_score"] == 55 and cilium["top_domains"][0] in {"eBPF", "Detection"}
+\n\ndef test_large_sparse_graph_uses_indexed_relationships():
+    recs = [rec(f"user{i}", 10 + i % 5, ["DomainA"] if i % 3 == 0 else ["DomainB"]) for i in range(600)]
+    # Only the first 30 share an organization; the rest remain sparse.
+    for r in recs[:30]:
+        r.orgs = ["security-org"]
+    graph = build_graph(recs)
+    assert len(graph.nodes) == 600
+    assert all(edge.weight >= 3 for edge in graph.edges)
+    assert len(graph.edges) == 435
+    assert max(r.centrality for r in recs) == 1.0
+
+
+def test_shared_domains_require_two_common_domains():
+    a = rec("alpha", 20, ["Cloud", "AppSec"])
+    b = rec("beta", 18, ["Cloud"])
+    c = rec("gamma", 16, ["Cloud", "AppSec"])
+    graph = build_graph([a, b, c])
+    assert not any({e.a, e.b} == {"alpha", "beta"} for e in graph.edges)
+    ac = next(e for e in graph.edges if {e.a, e.b} == {"alpha", "gamma"})
+    assert ac.weight == 2

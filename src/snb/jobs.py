@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS jobs (
  id TEXT PRIMARY KEY, kind TEXT NOT NULL, payload TEXT NOT NULL,
  idempotency_key TEXT UNIQUE, status TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
  max_attempts INTEGER NOT NULL DEFAULT 3, available_at REAL NOT NULL,
- created_at TEXT NOT NULL, updated_at TEXT NOT NULL, last_error TEXT NOT NULL DEFAULT ''
+ created_at TEXT NOT NULL, updated_at TEXT NOT NULL, last_error TEXT NOT NULL DEFAULT \'\',
+ result TEXT NOT NULL DEFAULT \'\', lease_until REAL
 );
 CREATE INDEX IF NOT EXISTS idx_jobs_ready ON jobs(status, available_at);
 """

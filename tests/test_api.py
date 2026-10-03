@@ -3,6 +3,12 @@ from fastapi.testclient import TestClient
 from snb.api.app import app
 
 
+def test_home_page():
+    response = TestClient(app).get("/")
+    assert response.status_code == 200
+    assert "Security Network Builder" in response.text
+
+
 def test_health():
     client = TestClient(app)
     response = client.get("/api/health")

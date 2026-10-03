@@ -273,6 +273,10 @@ def test_public_engineer_profile_is_sanitized_and_public(monkeypatch):
         },
     )
     monkeypatch.setattr(
+        "snb.api.app.GitHubClient.list_user_orgs",
+        lambda self, login: ["ExampleOrg"],
+    )
+    monkeypatch.setattr(
         "snb.api.app.GitHubClient.list_user_repos",
         lambda self, login, limit=100: [
             {
@@ -281,7 +285,7 @@ def test_public_engineer_profile_is_sanitized_and_public(monkeypatch):
                 "stargazers_count": "5",
                 "language": "Go",
                 "html_url": "https://github.com/alice/secure-tool",
-            }
+            },
         ],
     )
     response = TestClient(app).get("/api/public/engineers/alice")
@@ -292,6 +296,8 @@ def test_public_engineer_profile_is_sanitized_and_public(monkeypatch):
     assert data["repositories"][0]["stars"] == 5
     assert "email" not in data
     assert data["repositories"][0]["url"] == "https://github.com/alice/secure-tool"
+    assert data["organizations"] == ["ExampleOrg"]
+    assert data["activity"][0]["repository"] == "secure-tool"
 
 
 def test_public_engineer_profile_rejects_invalid_login():

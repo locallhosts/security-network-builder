@@ -62,7 +62,7 @@ class WorkspaceStore:
         wid = str(uuid.uuid4())
         now = self._now()
         with self._lock, self._connect() as db:
-            db.execute("INSERT INTO workspaces(id,title,created_at,updated_at) VALUES(?,?,?,?,?)".replace(",updated_at)", ",updated_at)"), (wid, title.strip(), now, now))
+            db.execute("INSERT INTO workspaces(id,title,created_at,updated_at) VALUES(?,?,?,?)", (wid, title.strip(), now, now))
         return self.get(wid)
 
     def get(self, workspace_id: str) -> dict[str, Any]:

@@ -594,6 +594,84 @@ def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
     )
 
 
+@app.get("/api/usage", tags=["public"])
+def usage(request: Request, response: Response) -> dict[str, Any]:
+    _check_search_rate(request)
+    client = GitHubClient(load_settings().github_token)
+    try:
+        resources = client.rate_limit()
+    except GitHubError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    response.headers["X-Data-Source"] = "github"
+    return {"source": "github", "core": resources.get("core") or {}, "search": resources.get("search") or {}, "generated_at": datetime.now(timezone.utc).isoformat()}
+
+
+@app.get("/api/workspaces", tags=["private"])
+def list_workspaces(x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    require_api_key(x_api_key)
+    return {"workspaces": get_workspaces().list()}
+
+
+@app.post("/api/workspaces", tags=["private"], status_code=201)
+def create_workspace(payload: WorkspaceCreate, x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    require_api_key(x_api_key)
+    return get_workspaces().create(payload.title)
+
+
+@app.get("/api/workspaces/{workspace_id}", tags=["private"])
+def get_workspace(workspace_id: str, x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    require_api_key(x_api_key)
+    try:
+        return get_workspaces().get(workspace_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="workspace not found") from exc
+
+
+@app.patch("/api/workspaces/{workspace_id}", tags=["private"])
+def update_workspace(workspace_id: str, payload: WorkspaceUpdate, x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    require_api_key(x_api_key)
+    try:
+        return get_workspaces().update(workspace_id, status=payload.status, tags=payload.tags)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="workspace not found") from exc
+
+
+@app.post("/api/workspaces/{workspace_id}/items", tags=["private"])
+def add_workspace_item(workspace_id: str, payload: WorkspaceItem, x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    require_api_key(x_api_key)
+    try:
+        if payload.source_url and not _public_github_url(payload.source_url):
+            raise HTTPException(status_code=422, detail="source_url must be a public GitHub URL")
+        return get_workspaces().add_item(workspace_id, payload.kind, payload.value, payload.label, payload.source_url)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="workspace not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/workspaces/{workspace_id}/notes", tags=["private"])
+def add_workspace_note(workspace_id: str, payload: WorkspaceNote, x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    require_api_key(x_api_key)
+    try:
+        if payload.source_url and not _public_github_url(payload.source_url):
+            raise HTTPException(status_code=422, detail="source_url must be a public GitHub URL")
+        return get_workspaces().add_note(workspace_id, payload.body, payload.source_url)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="workspace not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.delete("/api/workspaces/{workspace_id}", status_code=204, tags=["private"])
+def delete_workspace(workspace_id: str, x_api_key: str | None = Header(default=None)) -> Response:
+    require_api_key(x_api_key)
+    try:
+        get_workspaces().delete(workspace_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="workspace not found") from exc
+    return Response(status_code=204)
+
+
 @app.get("/api/graph", response_model=GraphResponse, tags=["public"])
 def graph() -> GraphResponse:
     """Return only the latest run's relationship graph, without triage notes."""

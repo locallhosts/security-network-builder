@@ -161,7 +161,7 @@ Goal: add optional intelligence without allowing untrusted GitHub content to con
    - [x] Prompt/input boundaries
    - [x] Output validation
    - [x] Offline fallback
-   - [ ] Provider failure tests
+   - [x] Provider failure tests
 
 12. **Background discovery jobs**
    - [x] Job lifecycle
@@ -198,7 +198,7 @@ Goal: move from local application to production-grade service only after earlier
 15. **CI/CD deployment**
    - [x] CI test/build pipeline fully green
    - [x] Security/dependency checks
-   - [ ] Container build and smoke test
+   - [x] Container build and smoke test
    - [ ] Production environment configuration
    - [ ] Deployment health checks
    - [ ] Rollback procedure

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 import re
+import json
+import logging
 from datetime import datetime, timezone
 import secrets
 import time
@@ -278,6 +280,17 @@ def _public_engineer_intelligence(repositories: list[dict[str, Any]]) -> tuple[l
     return sorted(domain_hits), sorted(skills, key=str.lower)[:40], trends, signals[:30]
 
 
+_METRICS = {"requests": 0, "errors": 0, "searches": 0, "profiles": 0, "graphs": 0}
+
+
+class _JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        return json.dumps({"timestamp": datetime.now(timezone.utc).isoformat(), "level": record.levelname, "message": record.getMessage(), "logger": record.name})
+
+
+log = logging.getLogger("snb.api")
+
+
 _SEARCH_WINDOW = 60.0
 _SEARCH_LIMIT = 30
 _search_hits: dict[str, deque[float]] = defaultdict(deque)
@@ -329,7 +342,16 @@ def _check_search_rate(request: Request) -> None:
 async def security_headers(request: Request, call_next: Any) -> Any:
     correlation_id = request.headers.get("X-Request-ID") or secrets.token_hex(12)
     request.state.correlation_id = correlation_id
-    response = await call_next(request)
+    _METRICS["requests"] += 1
+    started = time.monotonic()
+    try:
+        response = await call_next(request)
+    except Exception:
+        _METRICS["errors"] += 1
+        log.exception("request_failed")
+        raise
+    finally:
+        log.info("request %s %s correlation_id=%s duration_ms=%.1f", request.method, request.url.path, correlation_id, (time.monotonic() - started) * 1000)
     response.headers.setdefault("X-Request-ID", correlation_id)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
@@ -376,6 +398,7 @@ def search(
 ) -> SearchResponse:
     """Search public GitHub repositories. No private API key is exposed to browsers."""
     _check_search_rate(request)
+    _METRICS["searches"] += 1
     client = GitHubClient(load_settings().github_token)
     search_query = q.strip()
     if language:
@@ -568,6 +591,7 @@ def search_users(
 def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
     """Return a sanitized public GitHub engineer profile."""
     _check_search_rate(request)
+    _METRICS["profiles"] += 1
     if not re.fullmatch(r"[A-Za-z0-9-]{1,39}", login):
         raise HTTPException(status_code=422, detail="invalid GitHub login")
 
@@ -628,6 +652,11 @@ def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
         score_breakdown=score_breakdown,
         evidence=evidence,
     )
+
+
+@app.get("/api/metrics", tags=["public"])
+def metrics() -> dict[str, Any]:
+    return {"service": "security-network-builder", "metrics": dict(_METRICS), "generated_at": datetime.now(timezone.utc).isoformat()}
 
 
 @app.get("/api/usage", tags=["public"])
@@ -729,6 +758,7 @@ def graph(
     max_nodes: int = Query(default=250, ge=1, le=500),
 ) -> GraphResponse:
     """Return a deterministic filtered graph snapshot from the latest public run."""
+    _METRICS["graphs"] += 1
     h = get_history()
     run_id = h.latest_run_id()
     filters = {"community": community, "min_centrality": min_centrality, "edge_type": edge_type, "node_type": node_type, "max_nodes": max_nodes}

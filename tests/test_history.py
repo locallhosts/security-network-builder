@@ -63,3 +63,20 @@ def test_postgres_backend_requires_driver(monkeypatch):
     monkeypatch.setitem(__import__("sys").modules, "psycopg", None)
     with pytest.raises(RuntimeError, match="psycopg"):
         History(database_url="postgresql://example.invalid/db")
+
+
+def test_schema_migrations_are_recorded(tmp_path):
+    h = History(tmp_path / "migrated.db")
+    with h._conn() as conn:
+        versions = [row[0] for row in conn.execute("SELECT version FROM schema_migrations ORDER BY version")]
+    assert versions == [1, 2]
+
+
+def test_sqlite_history_can_be_used_concurrently(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    h = History(tmp_path / "concurrent.db")
+    def write(i):
+        return h.save_run([rec(f"user-{i}", i)], "P", "rest", {}, [])
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        ids = list(pool.map(write, range(8)))
+    assert len(set(ids)) == 8

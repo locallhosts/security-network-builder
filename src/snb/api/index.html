@@ -40,7 +40,7 @@ footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
 </section>
 
 <section class="panel" id="search">
-<div class="panel-head"><div><h2>Discovery</h2><div class="muted">Search repositories or GitHub engineers using the public API.</div></div><div class="actions"><button class="btn" id="export-results" type="button" disabled>Export CSV</button><button class="btn" id="export-json" type="button" disabled>Export JSON</button></div></div>
+<div class="panel-head"><div><h2>Discovery</h2><div class="muted">Search repositories or GitHub engineers using the public API.</div></div><div class="actions"><button class="btn" id="export-results" type="button" disabled>Export CSV</button><button class="btn" id="export-json" type="button" disabled>Export JSON</button><button class="btn" id="export-markdown" type="button" disabled>Export Markdown</button></div></div>
 <div class="tabs"><button class="tab active" data-tab="repos">Repositories</button><button class="tab" data-tab="users">Engineers</button></div>
 
 <div id="repo-search">
@@ -68,7 +68,7 @@ footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
 </section>
 
 <section class="panel" id="profile-card" hidden>
-<div class="panel-head"><div><h2 id="profile-title">Engineer profile</h2><div class="muted">Public GitHub data and recent engineering evidence.</div></div><div class="actions"><button class="btn" id="export-profile" type="button" disabled>Export profile JSON</button><button class="btn" id="close-profile" type="button">Close</button></div></div>
+<div class="panel-head"><div><h2 id="profile-title">Engineer profile</h2><div class="muted">Public GitHub data and recent engineering evidence.</div></div><div class="actions"><button class="btn" id="export-profile" type="button" disabled>Export profile JSON</button><button class="btn" id="export-profile-md" type="button" disabled>Profile Markdown</button><button class="btn" id="close-profile" type="button">Close</button></div></div>
 <div id="profile" class="profile"></div>
 </section>
 
@@ -99,7 +99,7 @@ function githubLink(url,label="GitHub"){if(typeof url!=="string"||!/^https:\/\/(
 function setStatus(msg,type=""){const n=$("#status");n.textContent=msg;n.className="status"+(type?" "+type:"")}
 function setGraphStatus(msg){$("#graph-status").textContent=msg}
 function download(name,content,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
-function csv(rows){if(!rows.length)return "";const cols=Object.keys(rows[0]);const esc=v=>'"'+String(v??"").replaceAll('"','""')+'"';return [cols.map(esc).join(","),...rows.map(r=>cols.map(k=>esc(r[k])).join(","))].join("\n")}
+function markdownSearch(){const stamp=new Date().toISOString();const title=state.mode==="repos"?"Repository search":"Engineer search";let out="# "+title+"\n\n- Query: "+state.query+"\n- Page: "+state.page+"\n- Source: GitHub public API\n- Exported: "+stamp+"\n- Schema: 1\n\n";if(state.mode==="repos"){out+="| Repository | Owner | Stars | Language | URL |\n|---|---|---:|---|---|\n";state.results.forEach(x=>{out+="| "+String(x.repository||"").replaceAll("|","\\|")+" | "+String(x.owner||"")+" | "+Number(x.stars||0)+" | "+String(x.language||"")+" | "+String(x.url||"")+" |\n"})}else{out+="| Engineer | Followers | Public repos | URL |\n|---|---:|---:|---|\n";state.results.forEach(x=>{out+="| @"+x.login+" | "+Number(x.followers||0)+" | "+Number(x.public_repos||0)+" | "+String(x.url||"")+" |\n"})}return out}\nfunction csv(rows){if(!rows.length)return "";const cols=Object.keys(rows[0]);const esc=v=>'"'+String(v??"").replaceAll('"','""')+'"';return [cols.map(esc).join(","),...rows.map(r=>cols.map(k=>esc(r[k])).join(","))].join("\n")}
 function apiUrl(path,params){const u=new URL(path,location.origin);Object.entries(params).forEach(([k,v])=>{if(v!==""&&v!==null&&v!==undefined)u.searchParams.set(k,v)});return u}
 async function getJson(url){const r=await fetch(url,{headers:{Accept:"application/json"}});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.detail||"Request failed");return d}
 
@@ -139,7 +139,7 @@ async function search(){
   if(state.mode==="repos"){params.language=$("#language").value;params.min_stars=$("#min-stars").value;params.owner=$("#owner").value.trim();params.topic=$("#topic").value.trim();params.archived=$("#archived").value;params.fork=$("#fork").value;d=await getJson(apiUrl("/api/search",params))}
   else d=await getJson(apiUrl("/api/users/search",params));
   state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults(); if(state.mode==="repos"){searchHistory.unshift({q,language:params.language||"",min_stars:params.min_stars||"0",sort:params.sort,owner:params.owner||"",topic:params.topic||"",at:new Date().toISOString()});localStorage.setItem("snb-search-history",JSON.stringify(searchHistory.slice(0,20)))}
-  setStatus(state.results.length+" result(s) on page "+d.page,"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit;$("#export-results").disabled=!state.results.length;$("#export-json").disabled=!state.results.length;
+  setStatus(state.results.length+" result(s) on page "+d.page,"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit;$("#export-results").disabled=!state.results.length;$("#export-json").disabled=!state.results.length;$("#export-markdown").disabled=!state.results.length;
  }catch(e){clear($("#results"));$("#results").appendChild(el("div",{class:"empty"},e.message));setStatus(e.message,"error");$("#export-results").disabled=true;$("#export-json").disabled=true}
 }
 async function page(delta){
@@ -154,7 +154,7 @@ async function page(delta){
 async function loadEngineer(login){
  const card=$("#profile-card"),box=$("#profile");card.hidden=false;clear(box);box.appendChild(el("div",{class:"empty"},"Loading @"+login+"…"));card.scrollIntoView({behavior:"smooth",block:"start"});
  try{
-  const d=await getJson("/api/public/engineers/"+encodeURIComponent(login));state.profile=d;$("#export-profile").disabled=false;clear(box);$("#profile-title").textContent="Engineer · @"+d.login;
+  const d=await getJson("/api/public/engineers/"+encodeURIComponent(login));state.profile=d;$("#export-profile").disabled=false;$("#export-profile-md").disabled=false;clear(box);$("#profile-title").textContent="Engineer · @"+d.login;
   const left=el("div"),right=el("div");
   const head=el("div",{class:"result-top"},el("div",{},el("h3",{},d.name||("@"+d.login)),el("div",{class:"meta"},"@"+d.login+" · "+Number(d.followers||0).toLocaleString()+" followers · "+Number(d.public_repos||0).toLocaleString()+" public repositories")),githubLink(d.url,"GitHub profile")||"");
   if(d.score!==null&&d.score!==undefined){left.appendChild(el("div",{class:"metric"},"Security score ",el("b",{},Number(d.score).toFixed(1))));left.appendChild(el("div",{class:"chips"},(d.matched_domains||[]).map(x=>el("span",{class:"chip"},x))));left.appendChild(el("h3",{},"Score evidence"));left.appendChild(el("ul",{class:"fallback"},(d.evidence||[]).map(x=>el("li",{},x))));}
@@ -168,16 +168,16 @@ async function loadEngineer(login){
   left.appendChild(el("h3",{},"Recent activity"));left.appendChild(el("ul",{class:"fallback"},(d.activity||[]).slice(0,10).map(a=>el("li",{},a.repository+(a.pushed_at?" · "+a.pushed_at:"")+(a.language?" · "+a.language:"")))));
   right.appendChild(el("h3",{},"Repository health signals"));const list=el("div",{class:"repo-list"});(d.repository_signals||[]).slice(0,12).forEach(r=>{const repo=(d.repositories||[]).find(x=>x.name===r.name);list.appendChild(el("div",{class:"repo-mini"},el("strong",{},githubLink(repo?.url,r.name)||r.name),el("span",{class:"meta"},"★ "+Number(r.stars||0)+" · forks "+Number(r.forks||0)+" · "+r.maintenance),el("div",{class:"muted"},(r.security_domains||[]).join(" · ")||"No configured security-domain match"))) });right.appendChild(list);
   box.appendChild(el("div",{class:"profile-grid"},left,right));
- }catch(e){state.profile=null;$("#export-profile").disabled=true;clear(box);box.appendChild(el("div",{class:"empty"},e.message))}
+ }catch(e){state.profile=null;$("#export-profile").disabled=true;$("#export-profile-md").disabled=true;clear(box);box.appendChild(el("div",{class:"empty"},e.message))}
 }
 
 document.querySelectorAll(".tab").forEach(tab=>tab.addEventListener("click",()=>{
- document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));tab.classList.add("active");state.mode=tab.dataset.tab;state.results=[];state.query="";state.page=1;clear($("#results"));$("#export-results").disabled=true;$("#export-json").disabled=true;$("#page-label").textContent="Page 1";$("#prev").disabled=$("#next").disabled=true;$("#repo-search").hidden=state.mode!=="repos";$("#user-search").hidden=state.mode!=="users";setStatus("")
+ document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));tab.classList.add("active");state.mode=tab.dataset.tab;state.results=[];state.query="";state.page=1;clear($("#results"));$("#export-results").disabled=true;$("#export-json").disabled=true;$("#export-markdown").disabled=true;$("#page-label").textContent="Page 1";$("#prev").disabled=$("#next").disabled=true;$("#repo-search").hidden=state.mode!=="repos";$("#user-search").hidden=state.mode!=="users";setStatus("")
 }));
 $("#repo-form").addEventListener("submit",e=>{e.preventDefault();search()});$("#advanced-toggle").addEventListener("click",()=>{const n=$("#advanced-query"),open=n.hidden;n.hidden=!open;$("#advanced-toggle").setAttribute("aria-expanded",String(open))});$("#user-form").addEventListener("submit",e=>{e.preventDefault();search()});$("#prev").addEventListener("click",()=>page(-1));$("#next").addEventListener("click",()=>page(1));$("#close-profile").addEventListener("click",()=>$("#profile-card").hidden=true);
 
-$("#export-json").addEventListener("click",()=>{if(state.results.length)download(state.mode==="repos"?"snb-repositories.json":"snb-engineers.json",JSON.stringify(state.results,null,2),"application/json")});
-$("#export-profile").addEventListener("click",()=>{if(state.profile)download("snb-engineer-"+state.profile.login+".json",JSON.stringify(state.profile,null,2),"application/json")});
+$("#export-json").addEventListener("click",()=>{if(state.results.length)download(state.mode==="repos"?"snb-repositories.json":"snb-engineers.json",JSON.stringify({schema_version:1,source:"github",query:state.query,exported_at:new Date().toISOString(),results:state.results},null,2),"application/json")});$("#export-markdown").addEventListener("click",()=>{if(state.results.length)download("snb-search-report.md",markdownSearch(),"text/markdown")});
+$("#export-profile").addEventListener("click",()=>{if(state.profile)download("snb-engineer-"+state.profile.login+".json",JSON.stringify({schema_version:1,source:"github",exported_at:new Date().toISOString(),profile:state.profile},null,2),"application/json")});$("#export-profile-md").addEventListener("click",()=>{if(state.profile){const p=state.profile;let m="# Engineer profile · @"+p.login+"\n\n- Source: GitHub public API\n- Exported: "+new Date().toISOString()+"\n- Score: "+(p.score??"n/a")+"\n- Domains: "+(p.matched_domains||[]).join(", ")+"\n- Skills: "+(p.skills||[]).join(", ")+"\n\n## Evidence\n"+(p.evidence||[]).map(x=>"- "+x).join("\n")+"\n\n## Repositories\n"+(p.repository_signals||[]).map(x=>"- "+x.name+" · "+x.maintenance+" · ★ "+x.stars).join("\n");download("snb-engineer-"+p.login+".md",m,"text/markdown")}});
 $("#export-results").addEventListener("click",()=>{
  if(!state.results.length)return;
  if(state.mode==="repos")download("snb-repositories.csv",csv(state.results.map(x=>({repository:x.repository,owner:x.owner,stars:x.stars,language:x.language,url:x.url,description:x.description}))),"text/csv");

@@ -202,3 +202,43 @@ def test_search_response_contract_rejects_unexpected_upstream_shape(monkeypatch)
     )
     response = TestClient(app).get("/api/search?q=security")
     assert response.status_code == 500
+
+
+def test_api_settings_normalize_environment(monkeypatch):
+    monkeypatch.setenv("SNB_HISTORY_DB", "/tmp/snb-test.db")
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    monkeypatch.setenv("API_KEY", "secret")
+    monkeypatch.setenv("SNB_ALLOWED_HOSTS", "example.test, api.example.test ")
+    from snb.api.app import load_settings
+
+    settings = load_settings()
+    assert settings.history_db == "/tmp/snb-test.db"
+    assert settings.github_token == "token"
+    assert settings.api_key == "secret"
+    assert settings.allowed_hosts == ("example.test", "api.example.test")
+
+
+def test_api_settings_use_safe_defaults(monkeypatch):
+    for name in ("SNB_HISTORY_DB", "GITHUB_TOKEN", "API_KEY", "SNB_ALLOWED_HOSTS"):
+        monkeypatch.delenv(name, raising=False)
+    from snb.api.app import load_settings
+
+    settings = load_settings()
+    assert settings.history_db == "data/history.db"
+    assert settings.github_token is None
+    assert settings.api_key is None
+    assert settings.allowed_hosts == ("*",)
+
+
+def test_graph_response_contract_handles_missing_run(monkeypatch):
+    class EmptyHistory:
+        def latest_run_id(self):
+            return 1
+
+        def get_run(self, run_id):
+            return None
+
+    monkeypatch.setattr("snb.api.app.get_history", lambda: EmptyHistory())
+    response = TestClient(app).get("/api/graph")
+    assert response.status_code == 200
+    assert response.json() == {"nodes": [], "edges": [], "communities": []}

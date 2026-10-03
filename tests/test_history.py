@@ -51,3 +51,15 @@ def test_history_cli(tmp_path, capsys):
     assert history.main(["--db", db, "--set", "alice", "ignored"]) == 0
     assert history.main(["--db", db, "--set", "alice", "bogus"]) == 1
     assert history.main(["--db", db, "--login", "alice"]) == 0 and "score 12" in capsys.readouterr().out
+
+
+def test_database_url_uses_sqlite_compatibility(tmp_path):
+    h = History(database_url=str(tmp_path / "url.db"))
+    rid = h.save_run([rec("db", 7)], "P", "rest", {}, [])
+    assert h.get_run(rid)["recommendations"][0]["login"] == "db"
+
+
+def test_postgres_backend_requires_driver(monkeypatch):
+    monkeypatch.setitem(__import__("sys").modules, "psycopg", None)
+    with pytest.raises(RuntimeError, match="psycopg"):
+        History(database_url="postgresql://example.invalid/db")

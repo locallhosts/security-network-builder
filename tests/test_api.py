@@ -255,6 +255,9 @@ def test_public_web_ui_exposes_secure_search_controls():
     assert 'id="next"' in response.text
     assert "createElementNS" in response.text
     assert "innerHTML" not in response.text
+    assert 'id="zoom-in"' in response.text
+    assert 'id="zoom-out"' in response.text
+    assert "drag empty space to pan" in response.text
 
 
 def test_public_engineer_profile_is_sanitized_and_public(monkeypatch):

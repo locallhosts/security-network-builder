@@ -196,7 +196,7 @@ Every feature must satisfy these rules:
 - [x] JSON
 - [x] SVG
 - [x] Human-readable Markdown
-- [x] Optional PDF report generated locally/server-side
+- [ ] Optional PDF report generated locally/server-side (deferred until report dependency is intentionally added)
 - [x] Export metadata: query, timestamp, source, filters, schema version
 - [x] No secrets or private notes in public exports
 

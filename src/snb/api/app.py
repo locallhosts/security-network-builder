@@ -366,7 +366,8 @@ async def security_headers(request: Request, call_next: Any) -> Any:
         "connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
     )
     if request.url.path.startswith("/api/"):
-        response.headers.setdefault("Cache-Control", "no-store")
+        public_cache = request.url.path in {"/api/search", "/api/users/search", "/api/public/engineers/compare", "/api/graph"}
+        response.headers.setdefault("Cache-Control", "public, max-age=30, stale-while-revalidate=60" if public_cache else "no-store")
     return response
 
 

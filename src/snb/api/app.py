@@ -267,7 +267,7 @@ def job_status(job_id: str, x_api_key: str | None = Header(default=None)) -> Job
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="job not found") from exc
     return JobResponse(id=job.id, kind=job.kind, status=job.status, attempts=job.attempts,
-                       max_attempts=job.max_attempts, last_error=job.last_error)
+                       max_attempts=job.max_attempts, last_error=job.last_error, result=job.result)
 
 
 @app.get("/api/runs", tags=["private"])

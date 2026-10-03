@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from fastapi import Body, FastAPI, Header, HTTPException, Query, Request
+from fastapi import Body, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -24,6 +24,7 @@ from ..github_api import GitHubClient, GitHubError
 from ..history import History
 from ..jobs import JobQueue
 from ..readiness import readiness
+from ..workspace import WorkspaceStore
 from ..scoring import score_candidate
 
 app = FastAPI(
@@ -116,6 +117,8 @@ class GraphResponse(BaseModel):
     nodes: list[dict[str, Any]]
     edges: list[dict[str, Any]]
     communities: list[Any]
+    generated_at: str | None = None
+    filters: dict[str, Any] = Field(default_factory=dict)
 
 
 class PublicRepository(BaseModel):
@@ -126,6 +129,27 @@ class PublicRepository(BaseModel):
     stars: int = Field(ge=0)
     language: str | None
     url: str | None
+
+
+class WorkspaceCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+
+
+class WorkspaceUpdate(BaseModel):
+    status: str | None = Field(default=None, pattern="^(open|reviewing|closed)$")
+    tags: list[str] | None = Field(default=None, max_length=30)
+
+
+class WorkspaceItem(BaseModel):
+    kind: str = Field(pattern="^(engineer|repository)$")
+    value: str = Field(min_length=1, max_length=200)
+    label: str | None = Field(default=None, max_length=200)
+    source_url: str | None = Field(default=None, max_length=500)
+
+
+class WorkspaceNote(BaseModel):
+    body: str = Field(min_length=1, max_length=10000)
+    source_url: str | None = Field(default=None, max_length=500)
 
 
 class JobResponse(BaseModel):
@@ -264,6 +288,10 @@ def get_jobs() -> JobQueue:
     return JobQueue(load_settings().jobs_db)
 
 
+def get_workspaces() -> WorkspaceStore:
+    return WorkspaceStore(os.environ.get("SNB_WORKSPACE_DB", "data/workspaces.db"))
+
+
 def require_api_key(value: str | None) -> None:
     settings = load_settings()
     audit = AuditLog(os.environ.get("SNB_AUDIT_DB", "data/audit.db"))
@@ -295,7 +323,10 @@ def _check_search_rate(request: Request) -> None:
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next: Any) -> Any:
+    correlation_id = request.headers.get("X-Request-ID") or secrets.token_hex(12)
+    request.state.correlation_id = correlation_id
     response = await call_next(request)
+    response.headers.setdefault("X-Request-ID", correlation_id)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
     response.headers.setdefault("X-Frame-Options", "DENY")

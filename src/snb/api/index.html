@@ -74,7 +74,7 @@ footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
 </section>
 
 <section class="panel" id="graph">
-<div class="panel-head"><div><h2>Security community network</h2><div class="muted">Explore relationship strength, communities, centrality and individual engineers.</div></div><div class="actions"><button class="btn" id="download-svg" type="button">Download SVG</button><button class="btn" id="download-graph" type="button">Download graph JSON</button></div></div>
+<div class="panel-head"><div><h2>Security community network</h2><div class="muted">Explore relationship strength, communities, centrality and individual engineers.</div></div><div class="actions"><button class="btn" id="download-svg" type="button">Download SVG</button><button class="btn" id="download-graph" type="button">Download graph JSON</button><button class="btn" id="download-graph-md" type="button">Graph report</button></div></div>
 <div class="graph-tools">
 <label class="field">Community<select id="community"><option value="">All communities</option></select></label>
 <label class="field">Min centrality<input id="centrality" type="number" min="0" max="1" step=".05" value="0"></label>
@@ -247,7 +247,7 @@ $("#graph-svg").addEventListener("pointermove",ev=>{if(!pan)return;const rect=$(
 $("#graph-svg").addEventListener("pointerup",()=>{pan=null});
 $("#zoom-in").addEventListener("click",()=>zoomGraph(1.2));$("#zoom-out").addEventListener("click",()=>zoomGraph(.8333));
 $("#apply-graph").addEventListener("click",drawGraph);$("#edge-type").addEventListener("change",drawGraph);$("#reset-graph").addEventListener("click",()=>{$("#community").value="";$("#centrality").value="0";$("#node-filter").value="";$("#edge-type").value="";view={scale:1,tx:0,ty:0};drawGraph()});
-$("#download-graph").addEventListener("click",()=>download("security-network-graph.json",JSON.stringify(graphState,null,2),"application/json"));
+$("#download-graph").addEventListener("click",()=>download("security-network-graph.json",JSON.stringify(graphState,null,2),"application/json"));$("#download-graph-md").addEventListener("click",()=>{const g=graphState;let m="# Security community graph report\n\n- Source: GitHub public data\n- Generated: "+(g.generated_at||new Date().toISOString())+"\n- Nodes: "+(g.nodes||[]).length+"\n- Relationships: "+(g.edges||[]).length+"\n- Communities: "+(g.communities||[]).length+"\n\n## Communities\n"+(g.communities||[]).map(c=>"- Community "+c.id+" · "+c.size+" members · "+(c.top_domain||"mixed")).join("\n")+"\n\n## Top centrality\n"+[...(g.nodes||[])].sort((a,b)=>Number(b.centrality)-Number(a.centrality)).slice(0,25).map(n=>"- @"+n.login+" · centrality "+n.centrality+" · score "+n.score).join("\n")+"\n";download("security-network-graph.md",m,"text/markdown")});
 $("#download-svg").addEventListener("click",()=>{const clone=$("#graph-svg").cloneNode(true);clone.setAttribute("xmlns","http://www.w3.org/2000/svg");download("security-network-graph.svg",new XMLSerializer().serializeToString(clone),"image/svg+xml")});
 
 async function loadUsage(){try{const d=await getJson("/api/usage");const r=d.search||{};const left=r.remaining!==undefined?r.remaining:"—";const limit=r.limit!==undefined?r.limit:"—";$("#rate-status").textContent="GitHub Search API · "+left+" / "+limit+" remaining";}catch(e){$("#rate-status").textContent="GitHub capacity unavailable · retry if searches fail";}}

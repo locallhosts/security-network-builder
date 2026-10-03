@@ -106,6 +106,8 @@ class PublicEngineerProfile(BaseModel):
     created_at: str | None
     url: str | None
     repositories: list[PublicRepository]
+    organizations: list[str]
+    activity: list[dict[str, str | None]]
 
 
 def _nonnegative_int(value: Any) -> int:
@@ -264,10 +266,12 @@ def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
         if not profile:
             raise HTTPException(status_code=404, detail="engineer not found")
         repositories = client.list_user_repos(login, limit=12)
+        organizations = client.list_user_orgs(login)
     except GitHubError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     public_repositories = []
+    activity = []
     for repo in repositories:
         public_repositories.append(
             PublicRepository(
@@ -277,6 +281,13 @@ def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
                 language=repo.get("language"),
                 url=_public_github_url(repo.get("html_url")),
             )
+        )
+        activity.append(
+            {
+                "repository": str(repo.get("name") or ""),
+                "pushed_at": repo.get("pushed_at"),
+                "language": repo.get("language"),
+            }
         )
 
     return PublicEngineerProfile(
@@ -289,6 +300,8 @@ def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
         created_at=profile.get("created_at"),
         url=_public_github_url(profile.get("html_url")),
         repositories=public_repositories,
+        organizations=sorted(set(organizations)),
+        activity=activity,
     )
 
 

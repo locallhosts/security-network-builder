@@ -37,7 +37,8 @@ class APISettings:
 
     history_db: str
     github_token: str | None
-    api_key: str | None
+    api_keys: tuple[str, ...]
+    environment: str
     allowed_hosts: tuple[str, ...]
     jobs_db: str
 
@@ -51,7 +52,8 @@ def load_settings() -> APISettings:
     return APISettings(
         history_db=os.environ.get("SNB_HISTORY_DB", "data/history.db"),
         github_token=os.environ.get("GITHUB_TOKEN") or None,
-        api_key=os.environ.get("API_KEY") or None,
+        api_keys=tuple(k.strip() for k in os.environ.get("API_KEYS", os.environ.get("API_KEY", "")).split(",") if k.strip()),
+        environment=os.environ.get("SNB_ENV", "development").strip().lower(),
         allowed_hosts=allowed_hosts or ("*",),
         jobs_db=os.environ.get("SNB_JOBS_DB", "data/jobs.db"),
     )
@@ -158,8 +160,12 @@ def get_jobs() -> JobQueue:
 
 
 def require_api_key(value: str | None) -> None:
-    configured = load_settings().api_key
-    if configured and (value is None or not secrets.compare_digest(value, configured)):
+    settings = load_settings()
+    if not settings.api_keys:
+        if settings.environment == "production":
+            raise HTTPException(status_code=503, detail="private API authentication is not configured")
+        return
+    if value is None or not any(secrets.compare_digest(value, configured) for configured in settings.api_keys):
         raise HTTPException(status_code=401, detail="invalid API key")
 
 

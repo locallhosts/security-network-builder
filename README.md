@@ -118,11 +118,11 @@ Goal: expose the foundation through a stable FastAPI interface while protecting 
 Goal: make the API useful through a professional web experience.
 
 7. **Search UI**
-   - [ ] Search engineers/repositories
-   - [ ] Filters and pagination
-   - [ ] Loading, empty, and error states
-   - [ ] Evidence-first result cards
-   - [ ] Secure rendering of GitHub content
+   - [x] Search public repositories
+   - [x] Filters and server-backed pagination
+   - [x] Loading, empty, and error states
+   - [x] Evidence-first result cards
+   - [x] Secure rendering of GitHub content
 
 8. **Engineer profiles**
    - [ ] Engineer profile page

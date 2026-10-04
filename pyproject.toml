@@ -5,17 +5,36 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "security-network-builder"
 dynamic = ["version"]
-description = "Discover, analyze and rank security engineers on GitHub by technical domain."\nauthors = [{ name = "locallhosts" }]\nkeywords = ["security", "github", "cybersecurity", "security-engineering", "threat-intelligence"]\nclassifiers = ["Programming Language :: Python :: 3", "Programming Language :: Python :: 3.10", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12", "License :: OSI Approved :: MIT License", "Operating System :: OS Independent", "Topic :: Security"]\n\n[project.urls]\nHomepage = "https://github.com/locallhosts/security-network-builder"\nRepository = "https://github.com/locallhosts/security-network-builder"\nIssues = "https://github.com/locallhosts/security-network-builder/issues"
+description = "Discover, analyze and rank security engineers on GitHub by technical domain."
+authors = [{ name = "locallhosts" }]
+keywords = ["security", "github", "cybersecurity", "security-engineering", "threat-intelligence"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Security",
+]
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-dependencies = ["requests>=2.31", "PyYAML>=6.0", "fastapi>=0.115", "uvicorn[standard]>=0.34"]
+dependencies = [
+  "requests>=2.31",
+  "PyYAML>=6.0",
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.34",
+]
+
+[project.urls]
+Homepage = "https://github.com/locallhosts/security-network-builder"
+Repository = "https://github.com/locallhosts/security-network-builder"
+Issues = "https://github.com/locallhosts/security-network-builder/issues"
 
 [project.optional-dependencies]
 postgres = ["psycopg[binary]>=3.2,<4"]
 pdf = ["reportlab>=4.0,<5"]
-
-
 dev = ["pytest>=7.0", "httpx>=0.27", "pip-audit>=2.7"]
 
 [project.scripts]

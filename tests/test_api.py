@@ -151,16 +151,16 @@ def test_engineer_history_contract(monkeypatch):
 def test_search_rate_limit_returns_retry_after(monkeypatch):
     import snb.api.app as api_app
 
-    api_app._search_hits.clear()
-    monkeypatch.setattr(api_app, "_SEARCH_LIMIT", 1)
+    api_app._PUBLIC_RATE_LIMITER.reset()
+    monkeypatch.setenv("SNB_RATE_LIMIT_SEARCH", "1")
     client = TestClient(app)
     monkeypatch.setattr(api_app.GitHubClient, "search_repositories", lambda *args, **kwargs: [])
     assert client.get("/api/search?q=security").status_code == 200
     response = client.get("/api/search?q=security")
     assert response.status_code == 429
     assert response.headers["Retry-After"].isdigit()
-    api_app._search_hits.clear()
-    monkeypatch.setattr(api_app, "_SEARCH_LIMIT", 30)
+    api_app._PUBLIC_RATE_LIMITER.reset()
+    monkeypatch.delenv("SNB_RATE_LIMIT_SEARCH", raising=False)
 
 
 def test_public_github_url_validation_rejects_non_https_and_subdomains():

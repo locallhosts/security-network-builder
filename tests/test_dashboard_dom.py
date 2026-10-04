@@ -58,3 +58,25 @@ def test_dashboard_in_real_dom(tmp_path):
         srv.server_close()
     assert out.returncode == 0, out.stdout + out.stderr
     assert "DOM OK" in out.stdout
+
+
+def test_public_page_javascript_parses():
+    """Catch inline public-page JavaScript syntax errors before deployment."""
+    from snb.api.app import PUBLIC_PAGE
+
+    marker = "<script>"
+    start = PUBLIC_PAGE.find(marker)
+    assert start >= 0, "public page must contain its application script"
+    start += len(marker)
+    end = PUBLIC_PAGE.find("</script>", start)
+    assert end >= 0, "public page application script must be closed"
+
+    script = PUBLIC_PAGE[start:end]
+    result = subprocess.run(
+        ["node", "--check", "--input-type=commonjs"],
+        input=script,
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    assert result.returncode == 0, result.stderr

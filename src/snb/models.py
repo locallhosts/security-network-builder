@@ -38,6 +38,8 @@ class Recommendation:
     community: int | None = None
     centrality: float = 0.0
     explanation: str = ""
+    explanation_source: str = "deterministic"
+    explanation_provider: str = "offline"
     status: str = ""        # your own triage state: reviewing / connected / ignored
     is_new: bool = False    # not seen in any previous run
     via: str = ""

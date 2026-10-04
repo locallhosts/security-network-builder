@@ -343,9 +343,9 @@ def test_public_web_ui_exposes_secure_search_controls():
     assert 'id="zoom-in"' in response.text
     assert 'id="zoom-out"' in response.text
     assert "drag empty space to pan" in response.text
-    assert 'archivedValue===""?null:archivedValue==="true"' in response.text
-    assert 'forkValue===""?null:forkValue==="true"' in response.text
-    assert "apiErrorMessage" in response.text
+    assert "GitHub discovery" in response.text
+    assert "does not modify the Security Intelligence Graph" in response.text
+    assert "Refresh intelligence" in response.text
 
 
 def test_public_engineer_profile_is_sanitized_and_public(monkeypatch):
@@ -467,8 +467,10 @@ def test_public_web_ui_exposes_profile_and_graph_controls():
     assert 'id="community"' in response.text
     assert 'id="centrality"' in response.text
     assert 'id="apply-graph"' in response.text
-    assert 'id="build-graph"' in response.text
+    assert 'id="refresh-graph"' in response.text
     assert "loadEngineer(login)" in response.text
+    assert "Security Intelligence Graph" in response.text
+    assert "Build graph from search" not in response.text
     assert "Relationship details" in response.text
 
 

@@ -646,6 +646,44 @@ def search_users(
     return UserSearchResponse(query=q, page=page, limit=limit, results=results, generated_at=datetime.now(timezone.utc).isoformat())
 
 
+@app.get("/api/public/engineers/compare", tags=["public"])
+def compare_engineers(
+    request: Request,
+    response: Response,
+    first: str = Query(..., min_length=1, max_length=39, pattern="^[A-Za-z0-9-]+$"),
+    second: str = Query(..., min_length=1, max_length=39, pattern="^[A-Za-z0-9-]+$"),
+) -> dict[str, Any]:
+    _check_public_rate(request, "compare", response)
+    if first.lower() == second.lower():
+        raise HTTPException(status_code=422, detail="compare two different engineers")
+    client = GitHubClient(load_settings().github_token)
+    profiles = []
+    for login in (first, second):
+        try:
+            profile = client.get_user(login)
+            repos = client.list_user_repos(login, limit=30)
+        except GitHubError as exc:
+            _METRICS["github_errors"] += 1
+            raise HTTPException(status_code=502, detail="upstream unavailable") from exc
+        if not profile:
+            raise HTTPException(status_code=404, detail=f"engineer not found: {login}")
+        domains, skills, trends, signals = _public_engineer_intelligence(repos)
+        rec = score_candidate(login, repos, Profile.load())
+        profiles.append({
+            "login": login,
+            "name": profile.get("name"),
+            "score": None if rec is None else rec.score,
+            "domains": domains,
+            "skills": skills,
+            "trends": trends,
+            "repository_count": len(repos),
+            "top_repositories": signals[:10],
+        })
+    return {"schema_version": 1, "source": "github", "profiles": profiles}
+
+
+
+
 @app.get("/api/public/engineers/{login}", response_model=PublicEngineerProfile, tags=["public"])
 def public_engineer(request: Request, response: Response, login: str) -> PublicEngineerProfile:
     """Return a sanitized public GitHub engineer profile."""
@@ -820,42 +858,6 @@ def public_engineer_relationships(request: Request, response: Response, login: s
     edges = [e for e in graph_data.get("edges", []) if e.get("a") == login or e.get("b") == login]
     edges.sort(key=lambda e: (-float(e.get("weight", 0)), str(e.get("a", "")), str(e.get("b", ""))))
     return {"login": login, "source": "public GitHub-derived graph", "relationships": edges[:100]}
-
-
-@app.get("/api/public/engineers/compare", tags=["public"])
-def compare_engineers(
-    request: Request,
-    response: Response,
-    first: str = Query(..., min_length=1, max_length=39, pattern="^[A-Za-z0-9-]+$"),
-    second: str = Query(..., min_length=1, max_length=39, pattern="^[A-Za-z0-9-]+$"),
-) -> dict[str, Any]:
-    _check_public_rate(request, "compare", response)
-    if first.lower() == second.lower():
-        raise HTTPException(status_code=422, detail="compare two different engineers")
-    client = GitHubClient(load_settings().github_token)
-    profiles = []
-    for login in (first, second):
-        try:
-            profile = client.get_user(login)
-            repos = client.list_user_repos(login, limit=30)
-        except GitHubError as exc:
-            _METRICS["github_errors"] += 1
-            raise HTTPException(status_code=502, detail="upstream unavailable") from exc
-        if not profile:
-            raise HTTPException(status_code=404, detail=f"engineer not found: {login}")
-        domains, skills, trends, signals = _public_engineer_intelligence(repos)
-        rec = score_candidate(login, repos, Profile.load())
-        profiles.append({
-            "login": login,
-            "name": profile.get("name"),
-            "score": None if rec is None else rec.score,
-            "domains": domains,
-            "skills": skills,
-            "trends": trends,
-            "repository_count": len(repos),
-            "top_repositories": signals[:10],
-        })
-    return {"schema_version": 1, "source": "github", "profiles": profiles}
 
 
 @app.get("/api/graph", response_model=GraphResponse, tags=["public"])

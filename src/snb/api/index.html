@@ -327,6 +327,7 @@ function apiErrorMessage(detail,fallback="Request failed"){if(typeof detail==="s
 async function loadGraph(){
  try{const d=await getJson("/api/graph");applyGraphSnapshot(d)}catch(e){setGraphStatus(e.message)}
 }
+$("#refresh-graph").addEventListener("click",async()=>{const b=$("#refresh-graph");b.disabled=true;b.textContent="Refreshing…";setGraphStatus("Reloading the latest persisted intelligence snapshot…");try{await loadGraph();setGraphStatus("Latest persisted intelligence snapshot loaded.");}finally{b.disabled=false;b.textContent="Refresh intelligence"}});
 const initialEngineer=new URLSearchParams(location.search).get("engineer");if(initialEngineer)loadEngineer(initialEngineer);
 loadUsage();loadGraph();
 </script>

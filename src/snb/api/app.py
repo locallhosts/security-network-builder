@@ -26,6 +26,7 @@ from ..config import Profile
 from ..github_api import GitHubClient, GitHubError
 from ..history import History
 from ..jobs import JobQueue
+from ..intelligence import IntelligenceError, build_provider
 from ..readiness import readiness
 from ..workspace import WorkspaceStore
 from ..scoring import score_candidate
@@ -161,6 +162,10 @@ class WorkspaceItem(BaseModel):
 class WorkspaceNote(BaseModel):
     body: str = Field(min_length=1, max_length=10000)
     source_url: str | None = Field(default=None, max_length=500)
+
+
+class WorkspaceExplain(BaseModel):
+    login: str = Field(min_length=1, max_length=39, pattern="^[A-Za-z0-9-]+$")
 
 
 class JobResponse(BaseModel):
@@ -823,6 +828,56 @@ def add_workspace_item(workspace_id: str, payload: WorkspaceItem, x_api_key: str
         raise HTTPException(status_code=404, detail="workspace not found") from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/workspaces/{workspace_id}/explain", tags=["private"])
+def explain_workspace(workspace_id: str, payload: WorkspaceExplain, x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    """Generate an optional deterministic/AI explanation for a public engineer in a private workspace."""
+    require_api_key(x_api_key)
+    try:
+        get_workspaces().get(workspace_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="workspace not found") from exc
+
+    client = GitHubClient(load_settings().github_token)
+    try:
+        profile = client.get_user(payload.login)
+        if not profile:
+            raise HTTPException(status_code=404, detail="engineer not found")
+        repos = client.list_user_repos(payload.login, limit=30)
+    except GitHubError as exc:
+        _METRICS["github_errors"] += 1
+        raise HTTPException(status_code=502, detail="upstream unavailable") from exc
+
+    recommendation = score_candidate(payload.login, repos, Profile.load())
+    if recommendation is None:
+        raise HTTPException(status_code=422, detail="no explainable security evidence")
+
+    try:
+        provider = build_provider(
+            os.environ.get("AI_PROVIDER", "offline"),
+            anthropic_key=os.environ.get("ANTHROPIC_API_KEY"),
+            openai_key=os.environ.get("OPENAI_API_KEY"),
+            anthropic_model=os.environ.get("ANTHROPIC_MODEL"),
+            openai_model=os.environ.get("OPENAI_MODEL"),
+        )
+        explanation = provider.explain(recommendation)
+    except IntelligenceError as exc:
+        raise HTTPException(status_code=503, detail="intelligence provider unavailable") from exc
+
+    source = "deterministic" if provider.name == "offline" else "ai"
+    note = f"Explanation ({provider.name}): {explanation}"
+    try:
+        stored = get_workspaces().add_note(workspace_id, note, _public_github_url(profile.get("html_url")))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="workspace not found") from exc
+
+    AuditLog(os.environ.get("SNB_AUDIT_DB", "data/audit.db")).record(
+        "workspace.explanation", subject=workspace_id, outcome="success",
+        detail=f"provider={provider.name}; source={source}; login={payload.login}",
+    )
+    return {"workspace_id": workspace_id, "login": payload.login, "explanation": explanation,
+            "source": source, "provider": provider.name, "note_id": stored.get("id")}
 
 
 @app.post("/api/workspaces/{workspace_id}/notes", tags=["private"])

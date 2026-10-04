@@ -38,3 +38,14 @@ def test_worker_persists_result():
     result = q.run_once({"demo": lambda payload: "completed"})
     assert result and result.status == "succeeded"
     assert q.get(job.id).result == "completed"
+
+
+def test_job_queue_stats_are_bounded_and_do_not_expose_payload(tmp_path):
+    from snb.jobs import JobQueue
+
+    queue = JobQueue(tmp_path / "jobs.db")
+    queue.enqueue("intelligence", {"secret": "do-not-return"})
+    stats = queue.stats()
+    assert stats["queued"] == 1
+    assert stats["total"] == 1
+    assert "secret" not in stats

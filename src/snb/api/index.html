@@ -320,16 +320,17 @@ function applyGraphSnapshot(data){
  const rank=$("#centrality-ranking");clear(rank);[...(graphState.nodes||[])].sort((a,b)=>Number(b.centrality)-Number(a.centrality)).slice(0,15).forEach(n=>rank.appendChild(el("li",{},el("button",{class:"btn",onclick:()=>showNode(n.login)},"@"+n.login)," · "+Number(n.centrality).toFixed(2))));
  drawGraph();
 }
+function apiErrorMessage(detail,fallback="Request failed"){if(typeof detail==="string"&&detail.trim())return detail;if(Array.isArray(detail)){const messages=detail.map(item=>{if(typeof item==="string")return item;if(item&&typeof item==="object"){const loc=Array.isArray(item.loc)?item.loc.filter(Boolean).join(" → "):"";const msg=typeof item.msg==="string"?item.msg:"Validation error";return loc?loc+": "+msg:msg}return String(item)}).filter(Boolean);if(messages.length)return messages.join("; ")}if(detail&&typeof detail==="object"){if(typeof detail.message==="string")return detail.message;if(typeof detail.error==="string")return detail.error}return fallback}
 async function buildGraphFromSearch(){
  if(state.mode!=="repos"||!state.query){setGraphStatus("Run a repository search first.");return}
  const button=$("#build-graph");button.disabled=true;button.textContent="Building…";setGraphStatus("Building graph from the current GitHub search…");
- const payload={query:state.query,limit:state.limit,top:15,sort:state.sort,language:$("#language").value,min_stars:Number($("#min-stars").value||0),owner:$("#owner").value.trim()||null,topic:$("#topic").value.trim()||null,archived:$("#archived").value,fork:$("#fork").value};
+ const archivedValue=$("#archived").value;const forkValue=$("#fork").value;const payload={query:state.query,limit:state.limit,top:15,sort:state.sort,language:$("#language").value,min_stars:Number($("#min-stars").value||0),owner:$("#owner").value.trim()||null,topic:$("#topic").value.trim()||null,archived:archivedValue===""?null:archivedValue==="true",fork:forkValue===""?null:forkValue==="true"};
  try{
   const r=await fetch("/api/public/graph/build",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});let d={};try{d=await r.json()}catch{}
-  if(!r.ok)throw new Error(d.detail||"Graph build failed");
+  if(!r.ok)throw new Error(apiErrorMessage(d.detail,"Graph build failed"));
   applyGraphSnapshot(d.graph||{});
   setGraphStatus("Graph built from “"+state.query+"” · "+d.engineers+" engineers · "+(d.graph?.edges||[]).length+" relationships · run "+(d.run_id??"not persisted"));
- }catch(e){setGraphStatus(e.message)}finally{button.disabled=false;button.textContent="Build graph from search"}
+ }catch(e){setGraphStatus(e instanceof Error?e.message:String(e))}finally{button.disabled=false;button.textContent="Build graph from search"}
 }
 $("#build-graph").addEventListener("click",buildGraphFromSearch);
 async function loadGraph(){

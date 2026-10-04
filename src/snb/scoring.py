@@ -20,6 +20,13 @@ ACTIVE_365D = 1.0
 LANGUAGE_BONUS = 1.0
 
 
+def _safe_number(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _parse_ts(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -64,7 +71,7 @@ def score_candidate(
             continue
         extra = min(len(entries) - 1, EXTRA_REPO_CAP)
         breakdown[domain.label] = domain.weight + extra * EXTRA_REPO_POINTS
-        best_repo, best_kws = max(entries, key=lambda e: e[0].get("stargazers_count", 0))
+        best_repo, best_kws = max(entries, key=lambda e: _safe_number(e[0].get("stargazers_count")) )
         name = best_repo.get("full_name") or f"{login}/{best_repo.get('name')}"
         evidence.append(f"{domain.label}: {name} ({', '.join(sorted(best_kws))})")
         for repo, _ in entries:
@@ -82,7 +89,7 @@ def score_candidate(
             evidence.append(f"Maintained: last matching push {age} days ago")
 
     # Traction: log-scaled stars on matching repos (capped so popularity can't dominate)
-    stars = sum(r.get("stargazers_count", 0) for r in matched.values())
+    stars = sum(_safe_number(r.get("stargazers_count")) for r in matched.values())
     traction = min(3, int(math.log10(stars + 1)))
     if traction:
         breakdown["Community traction"] = float(traction)
@@ -95,7 +102,7 @@ def score_candidate(
         breakdown["Preferred language"] = LANGUAGE_BONUS
         evidence.append(f"Builds security tooling in {', '.join(sorted(langs))}")
 
-    top_repos = sorted(matched.values(), key=lambda r: r.get("stargazers_count", 0), reverse=True)[:5]
+    top_repos = sorted(matched.values(), key=lambda r: _safe_number(r.get("stargazers_count")), reverse=True)[:5]
     rec = Recommendation(
         login=login,
         url=f"https://github.com/{login}",
@@ -107,7 +114,7 @@ def score_candidate(
             {
                 "name": r.get("full_name") or r.get("name"),
                 "url": r.get("html_url"),
-                "stars": r.get("stargazers_count", 0),
+                "stars": int(_safe_number(r.get("stargazers_count"))),
                 "language": r.get("language"),
                 "description": r.get("description"),
             }

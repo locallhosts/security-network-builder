@@ -48,3 +48,22 @@ def test_public_rate_limits_are_endpoint_specific(monkeypatch):
     assert client.get("/api/users/search?q=security").status_code == 200
     assert client.get("/api/search?q=security").status_code == 429
     _PUBLIC_RATE_LIMITER.reset()
+
+
+def test_security_headers_and_correlation_id_are_present():
+    response = TestClient(app).get("/api/health", headers={"X-Request-ID": "phase4-test-01"})
+    assert response.status_code == 200
+    assert response.headers["X-Request-ID"] == "phase4-test-01"
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
+
+
+def test_request_size_guard_rejects_oversized_body():
+    client = TestClient(app)
+    response = client.post(
+        "/api/workspaces",
+        headers={"Content-Length": str(2 * 1024 * 1024)},
+        content=b"{}",
+    )
+    assert response.status_code == 413

@@ -33,6 +33,7 @@ from ..workspace import WorkspaceStore
 from ..scoring import score_candidate
 from ..rate_limit import SlidingWindowLimiter
 from ..alerts import changes_since_previous_run
+from ..alert_state import AlertStore
 from ..watchlists import WatchlistStore
 from ..public_sources import fetch_cisa_kev
 
@@ -953,6 +954,33 @@ def alerts(
         run,
         min_move=min_move,
     )
+
+
+@app.get("/api/alerts/events", tags=["private"])
+def alert_events(
+    status: str | None = Query(default=None, pattern="^(pending|acknowledged)$"),
+    limit: int = Query(default=100, ge=1, le=500),
+    x_api_key: str | None = Header(default=None),
+) -> list[dict[str, Any]]:
+    require_api_key(x_api_key)
+    try:
+        return AlertStore(os.environ.get("SNB_ALERTS_DB", "data/alerts.db")).list(
+            status=status, limit=limit
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/alerts/events/{event_id}/acknowledge", tags=["private"])
+def acknowledge_alert_event(
+    event_id: str,
+    x_api_key: str | None = Header(default=None),
+) -> dict[str, Any]:
+    require_api_key(x_api_key)
+    try:
+        return AlertStore(os.environ.get("SNB_ALERTS_DB", "data/alerts.db")).acknowledge(event_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="alert event not found") from exc
 
 
 @app.get("/api/workspaces", tags=["private"])

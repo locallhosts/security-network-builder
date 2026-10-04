@@ -595,7 +595,7 @@ def engineer_analysis(login: str, x_api_key: str | None = Header(default=None)) 
             raise HTTPException(status_code=404, detail="engineer not found")
         repos = client.list_user_repos(login, limit=100)
     except GitHubError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=502, detail="upstream GitHub service unavailable") from exc
 
     recommendation = score_candidate(login, repos, Profile.load())
     history = get_history().engineer_history(login)
@@ -631,7 +631,7 @@ def search_users(
     sort: str = Query("followers", pattern="^(followers|repositories|joined)$"),
 ) -> UserSearchResponse:
     """Search public GitHub users without exposing credentials to the browser."""
-    _check_search_rate(request)
+    _check_public_rate(request, "users_search", response)
     client = GitHubClient(load_settings().github_token)
     try:
         items = client.search_users(q.strip(), per_page=limit, page=page, sort=sort)
@@ -661,7 +661,7 @@ def search_users(
 @app.get("/api/public/engineers/{login}", response_model=PublicEngineerProfile, tags=["public"])
 def public_engineer(request: Request, response: Response, login: str) -> PublicEngineerProfile:
     """Return a sanitized public GitHub engineer profile."""
-    _check_search_rate(request)
+    _check_public_rate(request, "profile", response)
     _METRICS["profiles"] += 1
     if not re.fullmatch(r"[A-Za-z0-9-]{1,39}", login):
         raise HTTPException(status_code=422, detail="invalid GitHub login")
@@ -732,7 +732,7 @@ def metrics() -> dict[str, Any]:
 
 @app.get("/api/usage", tags=["public"])
 def usage(request: Request, response: Response) -> dict[str, Any]:
-    _check_search_rate(request)
+    _check_public_rate(request, "usage", response)
     client = GitHubClient(load_settings().github_token)
     try:
         resources = client.rate_limit()
@@ -821,8 +821,8 @@ def delete_workspace(workspace_id: str, x_api_key: str | None = Header(default=N
 
 
 @app.get("/api/public/engineers/{login}/relationships", tags=["public"])
-def public_engineer_relationships(request: Request, login: str) -> dict[str, Any]:
-    _check_search_rate(request)
+def public_engineer_relationships(request: Request, response: Response, login: str) -> dict[str, Any]:
+    _check_public_rate(request, "relationships", response)
     if not re.fullmatch(r"[A-Za-z0-9-]{1,39}", login):
         raise HTTPException(status_code=422, detail="invalid GitHub login")
     data = get_history().get_run(get_history().latest_run_id()) if get_history().latest_run_id() else None
@@ -835,6 +835,7 @@ def public_engineer_relationships(request: Request, login: str) -> dict[str, Any
 @app.get("/api/public/engineers/compare", tags=["public"])
 def compare_engineers(
     request: Request,
+    response: Response,
     first: str = Query(..., min_length=1, max_length=39, pattern="^[A-Za-z0-9-]+$"),
     second: str = Query(..., min_length=1, max_length=39, pattern="^[A-Za-z0-9-]+$"),
 ) -> dict[str, Any]:
@@ -868,6 +869,8 @@ def compare_engineers(
 
 @app.get("/api/graph", response_model=GraphResponse, tags=["public"])
 def graph(
+    request: Request,
+    response: Response,
     community: int | None = Query(default=None, ge=0, le=10000),
     min_centrality: float = Query(default=0, ge=0, le=1),
     edge_type: str | None = Query(default=None, pattern="^(contributor|organization|domain)$"),
@@ -875,6 +878,7 @@ def graph(
     max_nodes: int = Query(default=250, ge=1, le=500),
 ) -> GraphResponse:
     """Return a deterministic filtered graph snapshot from the latest public run."""
+    _check_public_rate(request, "graph", response)
     _METRICS["graphs"] += 1
     h = get_history()
     run_id = h.latest_run_id()

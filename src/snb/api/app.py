@@ -50,6 +50,35 @@ app = FastAPI(
 )
 PUBLIC_PAGE = (Path(__file__).with_name("index.html")).read_text(encoding="utf-8")
 
+# FastAPI disables its automatic documentation routes because the application
+# uses a strict, explicit security-header policy.  Re-enable the interactive
+# documentation with the same generated OpenAPI schema and a docs-specific CSP.
+@app.get("/docs", include_in_schema=False)
+async def swagger_ui_html() -> HTMLResponse:
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=f"{app.title} - Swagger UI",
+        oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
+        swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
+        swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css",
+    )
+
+
+@app.get("/docs/oauth2-redirect", include_in_schema=False)
+async def swagger_ui_redirect() -> HTMLResponse:
+    return get_swagger_ui_oauth2_redirect_html()
+
+
+@app.get("/redoc", include_in_schema=False)
+async def redoc_html() -> HTMLResponse:
+    return get_redoc_html(
+        openapi_url=app.openapi_url,
+        title=f"{app.title} - ReDoc",
+        redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@2/bundles/redoc.standalone.js",
+    )
+
+
+
 
 @dataclass(frozen=True)
 class APISettings:
@@ -323,6 +352,37 @@ def _public_engineer_intelligence(repositories: list[dict[str, Any]]) -> tuple[l
 
     signals.sort(key=lambda item: (-item["stars"], item["name"].lower()))
     return sorted(domain_hits), sorted(skills, key=str.lower)[:40], trends, signals[:30]
+
+
+def analyze_organization_intelligence(recs: list[Any]) -> list[dict[str, Any]]:
+    """Summarize organization evidence from the current recommendation set.
+
+    The public graph endpoint must work from the same bounded search result
+    that produced the graph.  This deterministic summary intentionally uses
+    only organization/login/score data already present in each recommendation.
+    """
+    organizations: dict[str, dict[str, Any]] = {}
+    for rec in recs:
+        score = float(getattr(rec, "score", 0.0) or 0.0)
+        login = str(getattr(rec, "login", "") or "")
+        for org in getattr(rec, "orgs", []) or []:
+            if not isinstance(org, str) or not org.strip():
+                continue
+            key = org.strip()
+            entry = organizations.setdefault(
+                key,
+                {"organization": key, "engineers": [], "engineer_count": 0, "max_score": 0.0},
+            )
+            if login and login not in entry["engineers"]:
+                entry["engineers"].append(login)
+            entry["max_score"] = max(entry["max_score"], score)
+
+    result = []
+    for entry in organizations.values():
+        entry["engineers"].sort()
+        entry["engineer_count"] = len(entry["engineers"])
+        result.append(entry)
+    return sorted(result, key=lambda x: (-x["engineer_count"], -x["max_score"], x["organization"].lower()))
 
 
 _METRICS = {"requests": 0, "errors": 0, "rate_limited": 0, "github_errors": 0, "searches": 0, "profiles": 0, "graphs": 0}

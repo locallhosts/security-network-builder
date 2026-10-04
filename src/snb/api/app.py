@@ -388,7 +388,8 @@ async def request_size_guard(request: Request, call_next: Any) -> Any:
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next: Any) -> Any:
-    correlation_id = request.headers.get("X-Request-ID") or secrets.token_hex(12)
+    supplied_id = request.headers.get("X-Request-ID")
+    correlation_id = supplied_id if supplied_id and re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", supplied_id) else secrets.token_hex(12)
     request.state.correlation_id = correlation_id
     _METRICS["requests"] += 1
     started = time.monotonic()

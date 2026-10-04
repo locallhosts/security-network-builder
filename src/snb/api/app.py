@@ -18,7 +18,7 @@ from urllib.parse import urlparse
 from fastapi import Body, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ..audit import AuditLog
@@ -381,10 +381,10 @@ async def request_size_guard(request: Request, call_next: Any) -> Any:
         try:
             declared = int(content_length)
         except ValueError:
-            raise HTTPException(status_code=400, detail="invalid content length")
+            return JSONResponse(status_code=400, content={"detail": "invalid content length"})
         limit = _PUBLIC_BODY_LIMIT if request.url.path in _PUBLIC_PATHS else _PRIVATE_BODY_LIMIT
         if declared > limit:
-            raise HTTPException(status_code=413, detail="request body too large")
+            return JSONResponse(status_code=413, content={"detail": "request body too large"})
     return await call_next(request)
 
 
@@ -473,7 +473,7 @@ def search(
     try:
         items = client.search_repositories(search_query, per_page=limit, page=page, sort=sort)
     except GitHubError as exc:
-        raise HTTPException(status_code=502, detail="upstream GitHub service unavailable") from exc
+        raise HTTPException(status_code=502, detail="upstream unavailable") from exc
     results = []
     seen: set[str] = set()
     for item in items:
@@ -839,7 +839,8 @@ def compare_engineers(
             profile = client.get_user(login)
             repos = client.list_user_repos(login, limit=30)
         except GitHubError as exc:
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
+            _METRICS["github_errors"] += 1
+            raise HTTPException(status_code=502, detail="upstream unavailable") from exc
         if not profile:
             raise HTTPException(status_code=404, detail=f"engineer not found: {login}")
         domains, skills, trends, signals = _public_engineer_intelligence(repos)

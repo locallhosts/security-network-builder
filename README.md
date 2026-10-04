@@ -244,35 +244,35 @@ Every feature must satisfy these rules:
 **AI contract:** offline remains the default. A remote provider is used only when explicitly configured and supplied with its required secret. No public visitor can silently cause an LLM request.
 
 ### Phase 5 — Production hardening
-**Status: IMPLEMENTATION COMPLETE — VALIDATION GATE PENDING**
+**Status: IMPLEMENTATION COMPLETE — DEPLOYMENT INTENTIONALLY DEFERRED**
 
 #### 5A. Configuration
-- [ ] Production environment configuration
-- [ ] Fail-closed production secret validation
-- [ ] Safe default configuration
-- [ ] Offline AI default verified in production configuration
-- [ ] Separate public/private configuration boundaries
-- [ ] Secret redaction tests
+- [x] Production environment configuration
+- [x] Fail-closed production secret validation
+- [x] Safe default configuration
+- [x] Offline AI default verified in production configuration
+- [x] Separate public/private configuration boundaries
+- [x] Secret redaction tests
 
 #### 5B. Health and operations
-- [ ] Deployment health checks
-- [ ] Readiness semantics verified
-- [ ] Startup/shutdown behavior verified
-- [ ] Dependency failure behavior
-- [ ] GitHub outage/degraded-mode behavior
-- [ ] Worker health/status
-- [ ] Operational runbook
+- [x] Deployment health checks
+- [x] Readiness semantics verified
+- [x] Startup/shutdown behavior verified
+- [x] Dependency failure behavior
+- [x] GitHub outage/degraded-mode behavior
+- [x] Worker health/status
+- [x] Operational runbook
 
 #### 5C. Deployment and recovery
 - [x] CI test/build pipeline
 - [x] Security/dependency checks
 - [x] Container build and smoke test
-- [ ] Rollback procedure
+- [x] Rollback procedure
 - [ ] Render deployment
 - [ ] Post-deployment verification
 - [ ] Production smoke tests
 - [ ] Backup/restore verification for PostgreSQL
-- [ ] Migration rollback strategy
+- [x] Migration rollback strategy
 
 **Production rule:** deployment is the final gate. We will not deploy while a required product, security, or operational acceptance criterion is unchecked.
 

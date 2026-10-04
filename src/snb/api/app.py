@@ -25,6 +25,7 @@ from ..audit import AuditLog
 from ..config import Profile
 from ..github_api import GitHubClient, GitHubError
 from ..history import History
+from ..search_history import SearchHistoryStore
 from ..jobs import JobQueue
 from ..intelligence import IntelligenceError, build_provider
 from ..readiness import readiness
@@ -33,6 +34,7 @@ from ..scoring import score_candidate
 from ..rate_limit import SlidingWindowLimiter
 from ..alerts import changes_since_previous_run
 from ..watchlists import WatchlistStore
+from ..public_sources import fetch_cisa_kev
 
 app = FastAPI(
     title="Security Network Builder API",
@@ -168,6 +170,13 @@ class WorkspaceNote(BaseModel):
 
 class WorkspaceExplain(BaseModel):
     login: str = Field(min_length=1, max_length=39, pattern="^[A-Za-z0-9-]+$")
+
+
+class SearchHistoryCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    query: str = Field(min_length=2, max_length=100)
+    limit: int = Field(default=30, ge=1, le=30)
+    sort: str = Field(default="stars", pattern="^(stars|forks|help-wanted-issues|updated)$")
 
 
 class JobResponse(BaseModel):
@@ -316,6 +325,7 @@ _PUBLIC_RATE_LIMITS: dict[str, tuple[int, float]] = {
     "relationships": (30, 60.0),
     "graph": (20, 60.0),
     "usage": (10, 60.0),
+    "kev": (10, 60.0),
 }
 _PUBLIC_PATHS = {"/api/search", "/api/users/search", "/api/graph", "/api/usage"}
 _PRIVATE_BODY_LIMIT = 1_048_576
@@ -382,6 +392,26 @@ def require_api_key(value: str | None) -> None:
 
 
 @app.middleware("http")
+async def api_version_router(request: Request, call_next: Any) -> Any:
+    """Route stable /api/v1 URLs to the current public API implementation.
+
+    The versioned prefix is deliberately explicit; unversioned /api URLs remain
+    compatibility aliases during the current release line.
+    """
+    path = request.scope.get("path", "")
+    if path == "/api/v1" or path.startswith("/api/v1/"):
+        rewritten = "/api" + path[len("/api/v1"):]
+        request.scope["path"] = rewritten or "/api"
+        request.scope["raw_path"] = rewritten.encode("utf-8")
+        request.state.api_version = "v1"
+    else:
+        request.state.api_version = "legacy"
+    response = await call_next(request)
+    response.headers.setdefault("X-API-Version", getattr(request.state, "api_version", "legacy"))
+    return response
+
+
+@app.middleware("http")
 async def request_size_guard(request: Request, call_next: Any) -> Any:
     content_length = request.headers.get("content-length")
     if content_length:
@@ -438,6 +468,16 @@ def home() -> HTMLResponse:
 @app.get("/api/readiness", tags=["public"])
 def readiness_endpoint() -> dict[str, Any]:
     return readiness()
+
+
+@app.get("/api", tags=["public"])
+def api_info() -> dict[str, Any]:
+    return {
+        "service": "security-network-builder",
+        "current_version": "v1",
+        "versions": {"v1": "/api/v1"},
+        "legacy_alias": "/api",
+    }
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["public"])
@@ -769,6 +809,21 @@ def public_engineer(request: Request, response: Response, login: str) -> PublicE
     )
 
 
+@app.get("/api/public/threats/kev", tags=["public"])
+def kev_catalog(
+    request: Request,
+    response: Response,
+    limit: int = Query(25, ge=1, le=100),
+) -> dict[str, Any]:
+    """Return a bounded snapshot from the public CISA Known Exploited Vulnerabilities catalog."""
+    _check_public_rate(request, "kev", response)
+    try:
+        return fetch_cisa_kev(limit=limit)
+    except Exception as exc:
+        _METRICS["errors"] += 1
+        raise HTTPException(status_code=502, detail="public threat source unavailable") from exc
+
+
 @app.get("/api/metrics", tags=["public"])
 def metrics() -> dict[str, Any]:
     return {"service": "security-network-builder", "metrics": dict(_METRICS), "generated_at": datetime.now(timezone.utc).isoformat()}
@@ -787,6 +842,58 @@ def usage(request: Request, response: Response) -> dict[str, Any]:
     return {"source": "github", "core": resources.get("core") or {}, "search": resources.get("search") or {}, "generated_at": datetime.now(timezone.utc).isoformat()}
 
 
+
+
+@app.post("/api/search-history", status_code=201, tags=["private"])
+def create_search_history(
+    payload: SearchHistoryCreate,
+    x_api_key: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Run a bounded public GitHub repository search and persist its snapshot locally."""
+    require_api_key(x_api_key)
+    client = GitHubClient(load_settings().github_token)
+    try:
+        results = client.search_repositories(payload.query.strip(), per_page=payload.limit, sort=payload.sort)
+    except GitHubError as exc:
+        _METRICS["github_errors"] += 1
+        raise HTTPException(status_code=502, detail="upstream GitHub service unavailable") from exc
+    try:
+        return SearchHistoryStore(os.environ.get("SNB_SEARCH_HISTORY_DB", "data/search_history.db")).record(
+            payload.name, payload.query, results
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/api/search-history", tags=["private"])
+def list_search_history(
+    name: str | None = Query(default=None, max_length=80),
+    limit: int = Query(default=20, ge=1, le=20),
+    x_api_key: str | None = Header(default=None),
+) -> list[dict[str, Any]]:
+    require_api_key(x_api_key)
+    try:
+        return SearchHistoryStore(os.environ.get("SNB_SEARCH_HISTORY_DB", "data/search_history.db")).list(name, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/api/search-history/{name}/compare", tags=["private"])
+def compare_search_history(
+    name: str,
+    snapshot_id: str | None = Query(default=None, max_length=80),
+    x_api_key: str | None = Header(default=None),
+) -> dict[str, Any]:
+    require_api_key(x_api_key)
+    try:
+        result = SearchHistoryStore(os.environ.get("SNB_SEARCH_HISTORY_DB", "data/search_history.db")).compare(
+            name, snapshot_id=snapshot_id
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="search snapshot not found") from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail="search history not found")
+    return result
 
 
 class WatchlistCreate(BaseModel):

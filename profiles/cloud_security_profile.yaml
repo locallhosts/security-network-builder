@@ -1,0 +1,32 @@
+name: Cloud Security Profile
+github_username: ""
+
+settings:
+  min_stars: 5
+  active_within_days: 365
+  results_per_query: 30
+  max_candidates: 30
+  max_repos_per_user: 100
+  users_only: true
+  include_forks: false
+  preferred_languages: [Python, Go, Rust, HCL]
+  exclude_users: []
+
+domains:
+  cloud_security:
+    label: Cloud Security
+    weight: 10
+    keywords: [aws security, kubernetes security, terraform security, devsecops, cspm, cloud security, iac security]
+    search_queries: ["cloud security", "kubernetes security", "devsecops"]
+
+  identity_zero_trust:
+    label: Identity and Zero Trust
+    weight: 8
+    keywords: [spiffe, spire, iam, mtls, workload identity, zero trust]
+    search_queries: ["spiffe spire", "zero trust", "workload identity"]
+
+  security_automation:
+    label: Security Automation
+    weight: 6
+    keywords: [security automation, security tooling, security scanner, vulnerability scanner, security orchestration]
+    search_queries: ["security automation", "security tooling"]

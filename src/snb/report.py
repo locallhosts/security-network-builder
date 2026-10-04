@@ -64,6 +64,40 @@ def render_markdown(recs: list[Recommendation], profile_name: str, graph: dict[s
     return "\n".join(lines) + "\n"
 
 
+def write_pdf_report(
+    recs: list[Recommendation],
+    out_dir: str | Path,
+    profile_name: str,
+    graph: dict[str, Any] | None = None,
+    orgs: list[dict[str, Any]] | None = None,
+) -> Path:
+    """Write a compact PDF report using the optional reportlab dependency."""
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet
+    except ImportError as exc:
+        raise RuntimeError("PDF reports require the optional 'pdf' dependency: pip install '.[pdf]'") from exc
+
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    path = out / f"report_{stamp}.pdf"
+    styles = getSampleStyleSheet()
+    story = [Paragraph(f"Security Network Report: {profile_name}", styles["Title"]),
+             Paragraph(datetime.now().strftime("%Y-%m-%d %H:%M"), styles["Normal"]), Spacer(1, 12)]
+    for index, rec in enumerate(recs, 1):
+        story.append(Paragraph(f"{index}. @{rec.login} — score {rec.score:g}", styles["Heading2"]))
+        story.append(Paragraph("Areas: " + ", ".join(rec.matched_domains) or "Areas: none", styles["BodyText"]))
+        if rec.explanation:
+            story.append(Paragraph(rec.explanation, styles["BodyText"]))
+        if rec.evidence:
+            story.append(Paragraph("Evidence: " + "; ".join(rec.evidence[:8]), styles["BodyText"]))
+        story.append(Spacer(1, 8))
+    SimpleDocTemplate(str(path), pagesize=letter, title="Security Network Report").build(story)
+    return path
+
+
 def write_reports(
     recs: list[Recommendation],
     out_dir: str | Path,

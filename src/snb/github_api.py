@@ -77,7 +77,12 @@ class GitHubClient:
             return max(0.0, float(reset) - time.time()) + 1
         return 60.0
 
-    def _request(self, path: str, params: dict[str, Any] | None = None, json_body: dict[str, Any] | None = None) -> Any:
+    def _request(
+        self,
+        path: str,
+        params: dict[str, Any] | None = None,
+        json_body: dict[str, Any] | None = None,
+    ) -> Any:
         url = f"{API}{path}"
         for attempt in range(self.max_retries + 1):
             if json_body is not None:
@@ -87,14 +92,17 @@ class GitHubClient:
             if resp.status_code == 200:
                 self.last_headers = dict(resp.headers)
                 return resp.json()
-            if resp.status_code == 204:  # e.g. contributors of an empty repo
+            if resp.status_code == 204:
                 return []
             if resp.status_code == 404:
                 raise NotFoundError(path)
             if self._is_rate_limited(resp):
                 wait = self._wait_seconds(resp)
                 if wait > self.max_wait or attempt == self.max_retries:
-                    raise RateLimitError(f"rate limited; reset in ~{int(wait)}s (set GITHUB_TOKEN for higher limits)")
+                    raise RateLimitError(
+                        f"rate limited; reset in ~{int(wait)}s "
+                        "(set GITHUB_TOKEN for higher limits)"
+                    )
                 log.warning("Rate limited, sleeping %.0fs", wait)
                 self._sleep(wait)
                 continue
@@ -160,7 +168,11 @@ class GitHubClient:
         try:
             return self._request(
                 f"/users/{login}/repos",
-                {"type": "owner", "sort": "pushed", "per_page": min(limit, 100)},
+                {
+                    "type": "owner",
+                    "sort": "pushed",
+                    "per_page": min(limit, 100),
+                },
             )
         except NotFoundError:
             return []
@@ -170,21 +182,36 @@ class GitHubClient:
             return self._request(f"/users/{login}")
         except NotFoundError:
             return {}
-\n    def get_repository(self, full_name: str) -> dict[str, Any]:\n        """Fetch one public repository and return an empty object when absent."""\n        try:\n            return self._request(f"/repos/{full_name}")\n        except NotFoundError:\n            return {}\n
+
+    def get_repository(self, full_name: str) -> dict[str, Any]:
+        """Fetch one public repository and return an empty object when absent."""
+        try:
+            return self._request(f"/repos/{full_name}")
+        except NotFoundError:
+            return {}
+
     def rate_limit(self) -> dict[str, Any]:
         """Remaining quota per API. This endpoint does not count against your limits."""
         return self._request("/rate_limit").get("resources", {})
 
     def list_user_orgs(self, login: str) -> list[str]:
         try:
-            return [o["login"] for o in self._request(f"/users/{login}/orgs", {"per_page": 30})]
+            return [
+                o["login"]
+                for o in self._request(f"/users/{login}/orgs", {"per_page": 30})
+            ]
         except NotFoundError:
             return []
 
-    def list_contributors(self, full_name: str, limit: int = 30) -> list[dict[str, Any]]:
+    def list_contributors(
+        self, full_name: str, limit: int = 30
+    ) -> list[dict[str, Any]]:
         """Human contributors of a repo, most active first. Empty on failure (huge repos return 403)."""
         try:
-            data = self._request(f"/repos/{full_name}/contributors", {"per_page": min(limit, 100)})
+            data = self._request(
+                f"/repos/{full_name}/contributors",
+                {"per_page": min(limit, 100)},
+            )
         except RateLimitError:
             raise
         except GitHubError:
@@ -192,11 +219,18 @@ class GitHubClient:
         return [c for c in data if not is_bot(c)]
 
     # -- GraphQL -------------------------------------------------------
-    def graphql(self, query: str, variables: dict[str, Any] | None = None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    def graphql(
+        self,
+        query: str,
+        variables: dict[str, Any] | None = None,
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         """Run a read-only query. Returns (data, errors); partial data is allowed."""
         if not self.token:
             raise GitHubError("the GraphQL API requires GITHUB_TOKEN")
-        payload = self._request("/graphql", json_body={"query": query, "variables": variables or {}})
+        payload = self._request(
+            "/graphql",
+            json_body={"query": query, "variables": variables or {}},
+        )
         errors = payload.get("errors") or []
         if any(e.get("type") == "RATE_LIMITED" for e in errors):
             raise RateLimitError("GraphQL rate limit exceeded")

@@ -381,7 +381,7 @@ def test_public_web_ui_exposes_profile_and_graph_controls():
     assert 'id="community"' in response.text
     assert 'id="centrality"' in response.text
     assert 'id="apply-graph"' in response.text
-    assert "loadEngineer(n.login)" in response.text
+    assert "loadEngineer(login)" in response.text
     assert "Relationship details" in response.text
 
 

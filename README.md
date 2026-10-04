@@ -318,6 +318,74 @@ For every unchecked item:
 10. Move to the next item.
 
 The roadmap is deliberately detailed so we do not skip features, fake completion, or turn the platform into a collection of disconnected demos.
+## Public Platform
+
+The public web application has two intentionally separate product surfaces:
+
+### 1. GitHub Discovery
+
+Discovery is an exploratory research surface. Visitors can search public GitHub repositories and engineers, apply filters, inspect profiles, compare engineers, and export discovery results.
+
+**Discovery does not create, replace, or mutate the Security Intelligence Graph.** A search such as `eBPF`, `cloud security`, or any other repository query is not treated as the platform's intelligence model.
+
+### 2. Security Intelligence Graph
+
+The **Security Intelligence Graph** is the canonical, persisted SNB intelligence snapshot produced by the analysis workflow. The public page reads it through `GET /api/graph` and does not rebuild it from an arbitrary browser search.
+
+The graph represents:
+
+- analyzed engineers and their explainable security scores
+- evidence-backed relationships
+- security-domain communities
+- centrality and network position
+- relationship reasons/evidence
+- the latest persisted analysis run and its snapshot timestamp
+
+The graph UX must remain stable while a visitor performs unrelated discovery searches. A search may help a researcher decide what to investigate next, but it must never silently overwrite the canonical intelligence snapshot.
+
+### Intelligence graph UX contract
+
+| Surface | Purpose | Persistence | Canonical graph impact |
+| --- | --- | --- | --- |
+| GitHub Discovery | Find repositories and engineers | Browser search/history | None |
+| Engineer Profile | Inspect public evidence for one engineer | Request-scoped | None |
+| Security Intelligence Graph | Explore the latest SNB analysis | Persisted history run | Read-only from public UX |
+| Private/terminal analysis | Generate and persist a new intelligence run | History database | Creates the next canonical snapshot |
+
+The graph interface should provide:
+
+- overview metrics for engineers, relationships, communities, and highest-centrality engineer
+- community summaries and community filtering
+- relationship-type filtering
+- centrality ranking
+- node search and shortest-path exploration
+- click-through from a graph node to engineer intelligence
+- relationship evidence/reasons rather than unexplained edges
+- accessible structured graph data in addition to the SVG visualization
+- deterministic JSON, SVG, and Markdown exports
+- explicit snapshot source, run ID, and snapshot creation time
+- a clear empty state explaining that discovery searches do not create the graph
+- a **Refresh intelligence** action that reloads the persisted snapshot, not a browser-search-to-graph shortcut
+
+### Analysis boundary
+
+The endpoint `POST /api/public/graph/build` remains an explicit analysis capability for controlled workflows and regression coverage. It is **not** part of the normal discovery interaction and must not be presented as “Build graph from search” in the public UX. Any future product surface that invokes it must clearly label it as an intentional analysis operation and explain that it will create a new persisted run.
+
+The canonical public graph endpoint is:
+
+```text
+GET /api/graph
+```
+
+Search endpoints remain discovery endpoints:
+
+```text
+GET /api/search
+GET /api/users/search
+```
+
+This separation is a core product invariant and should be preserved in future frontend, API, deployment, and test work.
+
 ## Key Features
 
 The product is designed as a public security-intelligence platform built on real GitHub data.
@@ -558,284 +626,3 @@ The browser search endpoint is public and rate-limited in-process. Run history a
 ### Render
 
 `deployment/render.yaml` defines the free Docker web service and its environment variables. Set the secrets in Render rather than committing them:
-
-- `GITHUB_TOKEN` — recommended for higher GitHub API limits
-- `API_KEY` — protects private run-history endpoints
-- `OPENAI_API_KEY` / `OPENAI_MODEL` — optional OpenAI explanations
-- `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` — optional Anthropic explanations
-- `AI_PROVIDER` — `offline`, `openai`, or `anthropic`
-
-The hosted service is intentionally read-only with respect to GitHub. Do not expose private triage data through a public deployment.
-
-> **Persistence:** the current history implementation uses SQLite. Render's filesystem is not treated as durable state. Production readiness now fails closed unless SNB_DATABASE_URL points to PostgreSQL; configure a managed PostgreSQL database before deployment.
-
----
-
-## Configuration
-
-### Environment variables
-
-| Variable | Required | Purpose |
-|---|---|---|
-| `GITHUB_TOKEN` | Recommended | Higher rate limits and GraphQL mode. No permissions needed. |
-| `ANTHROPIC_API_KEY` | Optional | Only used with `--ai`. |
-| `ANTHROPIC_MODEL` | Optional | Overrides the default model used by `--ai`. |
-
-### Security profile
-
-The profile defines what you are looking for. By default `snb` reads `profiles/security_profile.yaml` in the current directory, and falls back to a profile bundled with the package if that file is not present.
-
-```yaml
-name: Security Engineer
-github_username: "your-login"      # excluded from results
-
-settings:
-  min_stars: 5                     # minimum stars on a seed repository
-  active_within_days: 365          # seed repositories must have been pushed to recently
-  results_per_query: 30
-  max_candidates: 30               # engineers analyzed in depth per run
-  max_repos_per_user: 100
-  users_only: true                 # skip organizations
-  include_forks: false
-  preferred_languages: [Python, Go, Rust]
-  exclude_users: []
-
-domains:
-  ebpf_linux_security:
-    label: Linux / eBPF Security
-    weight: 10                     # points for a matching engineer
-    keywords: [ebpf, runtime security, falco, tetragon]
-    search_queries: ["ebpf security", "topic:ebpf"]
-```
-
-To bootstrap a profile from your own work:
-
-```bash
-snb profile-suggest --github-user YOUR_LOGIN
-```
-
-This reads your public repositories and writes `profiles/suggested_profile.yaml` for you to review.
-
----
-
-## How It Works
-
-### 1. Discovery
-
-Your profile's search queries run against the GitHub Search API, filtered to active, non-fork, non-archived repositories above a star threshold. Repository owners become candidates. Organizations and excluded users are removed.
-
-### 2. Analysis
-
-Candidates are pre-ranked, and the top ones are analyzed in depth. With a token, GraphQL fetches repositories, topics, organization memberships, and contribution statistics for 10 engineers per request. Otherwise the REST API is used.
-
-### 3. Scoring
-
-Each engineer is scored from their public repositories. Keywords are matched as whole words against repository names, descriptions, and topics, so `iam` does not match `william`.
-
-| Component | Points |
-|---|---|
-| Domain match | Domain weight from your profile (first matching repo) |
-| Additional matching repos in the same domain | +1 each, up to +3 |
-| Recent activity | +3 if pushed within 90 days, +1 within a year |
-| Community traction | log-scaled stars, up to +3 |
-| Preferred language | +1 |
-| Reputation | up to +6 (see below) |
-
-**Reputation** is deliberately hard to game: followers contribute at most +2; contribution volume over the last year contributes +1 or +2; code review activity adds +1; account tenure of three years or more adds +1. Contribution and review data requires GraphQL (a token). In REST mode only followers and tenure are available.
-
-### 4. Relationships
-
-The final list is turned into a graph. Edges come from shared repository contributions (weight 4), shared organizations (weight 3 per organization), and two or more overlapping domains (weight 1 per domain). Weighted-degree centrality and deterministic community detection are computed from it.
-
-### 5. Reporting and history
-
-Results are explained in plain language, written to `reports/` as Markdown and JSON, and stored in a local SQLite database so later runs can flag new engineers and show score changes.
-
----
-
-## Architecture
-
-```
-          Security Profile (YAML)
-                    │
-                    ▼
-        Discovery (GitHub Search API)
-                    │
-                    ▼
-     Analysis (GraphQL batches, REST fallback)
-                    │
-                    ▼
-       Scoring Engine + Reputation Signals
-                    │
-        ┌───────────┼────────────────┐
-        ▼           ▼                ▼
-  Relationship   Explanations    History
-  Graph + Orgs   (offline / AI)  (SQLite)
-        └───────────┼────────────────┘
-                    ▼
-        Reports (Markdown, JSON)  ·  Dashboard
-```
-
----
-
-## Security Domains
-
-The default profile covers six domains. All are fully configurable.
-
-| Domain | Example technologies |
-|---|---|
-| **Detection Engineering** | Sigma, YARA, SIEM, SOAR, MITRE ATT&CK |
-| **Linux / eBPF Security** | eBPF, kernel security, runtime security, Falco |
-| **Cloud Security** | AWS, Kubernetes, Terraform, DevSecOps |
-| **Identity and Zero Trust** | SPIFFE/SPIRE, IAM, mTLS, workload identity |
-| **Application Security** | OWASP, API security, secure coding |
-| **Security Automation** | Python, Go, security tooling |
-
----
-
-## Project Structure
-
-```
-security-network-builder/
-├── src/snb/
-│   ├── main.py             # CLI, pipeline, command dispatch
-│   ├── doctor.py           # preflight checks
-│   ├── config.py           # profile loading and keyword matching
-│   ├── github_api.py       # read-only REST and GraphQL transport, rate-limit handling
-│   ├── graphql_api.py      # batched GraphQL fetching
-│   ├── discovery.py        # profile to GitHub searches to candidates
-│   ├── scoring.py          # explainable scoring engine
-│   ├── reputation.py       # capped reputation signals
-│   ├── graph.py            # relationship graph, centrality, communities
-│   ├── orgs.py             # organization analysis
-│   ├── history.py          # SQLite run history, triage notes, run diffs
-│   ├── alert_state.py      # private alert event acknowledgement state
-│   ├── search_history.py   # bounded repository-search snapshots and comparisons
-│   ├── profile_compare.py  # bounded multi-profile scoring of the same candidates
-│   ├── repository_health.py # deterministic public repository health signals
-│   ├── organization_intelligence.py # bounded organization concentration metrics
-│   ├── taxonomy.py # deterministic security technology/skill taxonomy
-│   ├── graph_formats.py # deterministic graph snapshot/interchange formats
-│   ├── public_sources.py # bounded public security-data integrations
-│   ├── watchlists.py       # scheduled public-data watchlists
-│   ├── watchlist_runner.py # bounded watchlist discovery execution
-│   ├── worker.py            # durable job handlers and scheduler bridge
-│   ├── workspace.py        # private investigation workspace, evidence, notes and timeline
-│   ├── explain.py          # offline and optional LLM explanations
-│   ├── profile_builder.py  # profile suggestion
-│   ├── dashboard.py        # hardened local HTTP server
-│   ├── dashboard_page.py   # single-page UI
-│   ├── default_profile.yaml
-│   ├── models.py
-│   └── report.py
-├── profiles/
-│   └── security_profile.yaml   # your editable profile
-├── docs/
-│   └── WEB_PLATFORM.md         # public UI, accessibility, graph and operational behavior
-├── tests/                  # offline pytest suite, plus a jsdom dashboard test
-├── .github/                # CI workflow and Dependabot configuration
-├── pyproject.toml
-├── .env.example
-└── README.md
-```
-
----
-
-## Development
-
-```bash
-pip install -e ".[dev]"
-python -m pytest                        # offline unit and integration tests
-```
-
-The test suite runs entirely offline against fake GitHub responses.
-
-The dashboard also has a DOM-level test. It starts a real server seeded with hostile data (script tags, `javascript:` URLs, event-handler payloads) and drives the page in jsdom to confirm nothing executes:
-
-```bash
-npm ci --prefix tests/web               # one-time: installs jsdom
-python -m pytest tests/test_dashboard_dom.py
-```
-
-jsdom is a DOM implementation, not a full browser: it does not render CSS or enforce Content Security Policy (CSP headers are verified separately at the server level). The DOM test is skipped automatically when Node or jsdom is unavailable.
-
-Continuous integration (`.github/workflows/ci.yml`) runs the tests on Python 3.10 to 3.12, runs the DOM test, and builds and smoke-tests the wheel in a clean virtual environment.
-
----
-
-## Troubleshooting
-
-| Symptom | Likely cause and fix |
-|---|---|
-| `snb: command not found` | The virtual environment is not active, or the install failed. Run `source .venv/bin/activate`, then `pip install -e ".[dev]"`. You can also use `python -m snb`. |
-| `Invalid requirement: '#'` during install | A `# comment` was pasted onto the command line in zsh. Run the command on its own. |
-| `ERROR: .[dev], is not a valid editable requirement` | A trailing comma was copied with the command. Use exactly `pip install -e ".[dev]"`. |
-| Python version too old | This project needs Python 3.10+. Check with `.venv/bin/python --version` and recreate the virtual environment with a newer interpreter if needed. |
-| `rate limited; reset in ~N s` | Anonymous GitHub limits are low. Add a `GITHUB_TOKEN` to `.env`, or wait for the reset. Use `--queries-per-domain 1` to save calls. |
-| `snb doctor` warns about token scopes | Your classic token has broader scopes than needed. Use a fine-grained token with no permissions. |
-| GraphQL warning in `snb doctor` | The tool falls back to REST automatically. Check that the token is valid and not expired. |
-| Dashboard shows "No runs yet" | Complete a discovery run first (`snb --queries-per-domain 1 --max-candidates 10 --top 5`). |
-| Dashboard port already in use | Choose another: `snb dashboard --port 8766 --open`. |
-
----
-
-## Security and Privacy
-
-- **Read-only.** The GitHub client has no follow, star, or message capability.
-- **Local storage.** Tokens live in `.env` (git-ignored). Run history and triage notes stay in a local SQLite file.
-- **Public data only.** No private repository access is needed or requested. No credentials are collected.
-- **Rate limits respected.** Requests back off on rate limiting, and partial results are kept if a limit is reached mid-run.
-- **No automated interaction.** Triage states such as `connected` are your own private notes.
-- **Hardened dashboard.** It binds to `127.0.0.1` only, validates the `Host` header (DNS-rebinding defense), requires a per-launch CSRF token for writes, and sends a strict Content Security Policy. All GitHub-sourced text is rendered as plain text, never as HTML, and links are restricted to `github.com`.
-- **Opt-in AI.** `--ai` sends only public repository metadata and computed scores to the selected OpenAI or Anthropic API, and instructs the model to treat GitHub text as untrusted data.
-- **Token hygiene.** If a token is ever committed, revoke it on GitHub immediately; deleting the commit is not enough.
-
----
-
-## Responsible Use
-
-This project exists to help people find technically relevant peers and collaborators. It is intentionally not:
-
-- a follower-farming tool
-- a mass-follow or mass-message bot
-- a social scraping system
-- a way to contact people who have not invited it
-
-Please follow [GitHub's Acceptable Use Policies](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies) and API terms, and treat the people in your reports with respect. Review a recommendation's evidence before reaching out, and keep any outreach personal and relevant.
-
----
-
-## Future Work
-
-Future work is tracked in the numbered roadmap above. We do not use this section as a second, conflicting checklist.
-
-The current Phase 6 foundation includes scheduled watchlists, deterministic alerts, search-history comparison, multi-profile comparison, organization intelligence, repository health intelligence, security technology taxonomy, graph snapshots/formats, CISA KEV integration, a versioned public API, SDK examples, PyPI release tooling, and contributor/developer documentation. Remaining release gates are external operational verification: actual Render deployment, post-deployment and production smoke tests, and a live PostgreSQL backup/restore drill.
-
-## Why This Project Exists
-
-I built this project to explore how security engineering communities can be discovered through technical signals rather than popularity metrics.
-
----
-
-## License
-
-Released under the [MIT License](LICENSE).
-### Production API protection
-
-The public FastAPI boundary includes bounded, process-local abuse controls in addition to GitHub upstream throttling:
-
-- endpoint-specific sliding-window limits for repository/user search, profiles, comparison, relationships, graph, and usage
-- `429 Too Many Requests` responses with `Retry-After` and `X-RateLimit-*` headers
-- bounded client state to prevent unbounded memory growth from hostile client identifiers
-- request body limits (32 KiB for public request paths and 1 MiB for private API requests)
-- bounded search parameters and pagination enforced by FastAPI validation
-- sanitized upstream GitHub errors so provider details are not exposed to callers
-- correlation IDs and request-duration logging
-- public/private CORS is disabled by default and can be explicitly allow-listed with `SNB_CORS_ORIGINS`
-- rate-limit and upstream-failure counters are exposed through `/api/metrics`
-
-Rate limits are intentionally process-local. A horizontally scaled deployment should also enforce a shared edge/WAF/API-gateway limit before the application.
-
-Supported endpoint overrides use requests per minute, for example `SNB_RATE_LIMIT_SEARCH=20` or `SNB_RATE_LIMIT_GRAPH=10`. Invalid values fall back to safe defaults.
-
-For production, `SNB_ALLOWED_HOSTS` must be explicitly configured; wildcard host acceptance is rejected by the readiness gate. Render's deployment manifest sets it to the service hostname and should be adjusted if a custom domain is used.

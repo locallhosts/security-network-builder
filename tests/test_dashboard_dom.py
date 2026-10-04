@@ -60,6 +60,18 @@ def test_dashboard_in_real_dom(tmp_path):
     assert "DOM OK" in out.stdout
 
 
+def test_public_page_separates_discovery_from_intelligence_graph():
+    """The public UX must not present repository search as the canonical graph builder."""
+    from snb.api.app import PUBLIC_PAGE
+
+    assert "GitHub discovery" in PUBLIC_PAGE
+    assert "Security Intelligence Graph" in PUBLIC_PAGE
+    assert "does not modify the Security Intelligence Graph" in PUBLIC_PAGE
+    assert "Refresh intelligence" in PUBLIC_PAGE
+    assert "Build graph from search" not in PUBLIC_PAGE
+    assert "buildGraphFromSearch" not in PUBLIC_PAGE
+
+
 def test_public_page_javascript_parses():
     """Catch inline public-page JavaScript syntax errors before deployment."""
     from snb.api.app import PUBLIC_PAGE

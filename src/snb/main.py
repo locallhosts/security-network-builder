@@ -20,6 +20,7 @@ from pathlib import Path
 
 from . import __version__
 from .config import Profile, load_env, read_profile_text
+from .audit import AuditLog
 from .discovery import discover
 from .explain import LLM, OpenAILLM, explain_all
 from .github_api import GitHubClient, GitHubError, RateLimitError
@@ -191,7 +192,7 @@ def run(args: argparse.Namespace) -> int:
         for rec in recs:
             rec.is_new = has_runs and rec.login not in seen
             rec.status = notes.get(rec.login, {}).get("status", "")
-    explain_all(recs, llm)
+    explain_all(recs, llm, AuditLog(os.environ.get("SNB_AUDIT_DB", "data/audit.db")) if llm else None)
 
     print(render_console(recs))
     if recs and not args.no_report:

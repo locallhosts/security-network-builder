@@ -31,6 +31,8 @@ from ..readiness import readiness
 from ..workspace import WorkspaceStore
 from ..scoring import score_candidate
 from ..rate_limit import SlidingWindowLimiter
+from ..alerts import changes_since_previous_run
+from ..watchlists import WatchlistStore
 
 app = FastAPI(
     title="Security Network Builder API",
@@ -785,6 +787,65 @@ def usage(request: Request, response: Response) -> dict[str, Any]:
     return {"source": "github", "core": resources.get("core") or {}, "search": resources.get("search") or {}, "generated_at": datetime.now(timezone.utc).isoformat()}
 
 
+
+
+class WatchlistCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    query: str = Field(min_length=2, max_length=100)
+    min_score: float = Field(default=0, ge=0, le=1000)
+    domains: list[str] = Field(default_factory=list, max_length=20)
+    interval_minutes: int = Field(default=1440, ge=15, le=43200)
+
+
+class WatchlistToggle(BaseModel):
+    enabled: bool
+
+
+@app.get("/api/watchlists", tags=["private"])
+def list_watchlists(x_api_key: str | None = Header(default=None)) -> list[dict[str, Any]]:
+    require_api_key(x_api_key)
+    return WatchlistStore(os.environ.get("SNB_WATCHLIST_DB", "data/watchlists.db")).list()
+
+
+@app.post("/api/watchlists", status_code=201, tags=["private"])
+def create_watchlist(payload: WatchlistCreate, x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    require_api_key(x_api_key)
+    try:
+        return WatchlistStore(os.environ.get("SNB_WATCHLIST_DB", "data/watchlists.db")).create(
+            payload.name, payload.query, min_score=payload.min_score,
+            domains=payload.domains, interval_minutes=payload.interval_minutes,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/watchlists/{watchlist_id}/enabled", tags=["private"])
+def toggle_watchlist(watchlist_id: str, payload: WatchlistToggle, x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    require_api_key(x_api_key)
+    try:
+        return WatchlistStore(os.environ.get("SNB_WATCHLIST_DB", "data/watchlists.db")).set_enabled(watchlist_id, payload.enabled)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="watchlist not found") from exc
+
+
+@app.get("/api/watchlists/due", tags=["private"])
+def due_watchlists(x_api_key: str | None = Header(default=None)) -> list[dict[str, Any]]:
+    require_api_key(x_api_key)
+    return WatchlistStore(os.environ.get("SNB_WATCHLIST_DB", "data/watchlists.db")).due()
+
+
+@app.get("/api/alerts", tags=["private"])
+def alerts(
+    run: int | None = Query(default=None, ge=1),
+    min_move: float = Query(default=2.0, ge=0, le=1000),
+    x_api_key: str | None = Header(default=None),
+) -> dict[str, Any]:
+    require_api_key(x_api_key)
+    return changes_since_previous_run(
+        History(load_settings().history_db),
+        run,
+        min_move=min_move,
+    )
 
 
 @app.get("/api/workspaces", tags=["private"])

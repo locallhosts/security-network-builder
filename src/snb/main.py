@@ -9,6 +9,8 @@ Commands:
   snb dashboard        local web dashboard for past runs
   snb history          list runs / trends / triage status / --diff between runs
   snb profile-suggest  propose a profile from your own GitHub repos
+  snb watchlist        manage scheduled public-data watchlists
+  snb alerts            show deterministic changes since the previous run
 """
 from __future__ import annotations
 
@@ -31,6 +33,8 @@ from .models import Candidate, Recommendation
 from .orgs import analyze_orgs
 from .report import render_console, write_reports
 from .scoring import apply_reputation, score_candidate
+from .alerts import changes_since_previous_run
+from .watchlists import WatchlistStore
 
 log = logging.getLogger(__name__)
 DEFAULT_DB = "data/history.db"
@@ -222,6 +226,10 @@ def main(argv: list[str] | None = None) -> int:
         return history_cli.main(rest)
     if command == "profile-suggest":
         return profile_suggest(rest)
+    if command == "watchlist":
+        return watchlist_command(rest)
+    if command == "alerts":
+        return alerts_command(rest)
     if command == "worker":
         from .worker import run_worker
         p = argparse.ArgumentParser(prog="snb worker")
@@ -280,3 +288,65 @@ def profile_suggest(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+def watchlist_command(argv: list[str]) -> int:
+    p = argparse.ArgumentParser(prog="snb watchlist", description="Manage local scheduled public-data watchlists")
+    p.add_argument("--db", default=os.environ.get("SNB_WATCHLIST_DB", "data/watchlists.db"))
+    sub = p.add_subparsers(dest="action", required=True)
+    create = sub.add_parser("create")
+    create.add_argument("name")
+    create.add_argument("query")
+    create.add_argument("--min-score", type=float, default=0)
+    create.add_argument("--domain", action="append", default=[])
+    create.add_argument("--interval-minutes", type=int, default=1440)
+    sub.add_parser("list")
+    due = sub.add_parser("due")
+    due.add_argument("--mark", action="store_true", help="advance each due watchlist to its next schedule")
+    enable = sub.add_parser("enable")
+    enable.add_argument("id")
+    disable = sub.add_parser("disable")
+    disable.add_argument("id")
+    args = p.parse_args(argv)
+    store = WatchlistStore(args.db)
+    try:
+        if args.action == "create":
+            item = store.create(args.name, args.query, min_score=args.min_score, domains=args.domain, interval_minutes=args.interval_minutes)
+            print(f"Created watchlist {item['id']}: {item['name']} (next run {item['next_run_at']})")
+        elif args.action == "list":
+            for item in store.list():
+                print(f"{item['id']}  {'enabled' if item['enabled'] else 'disabled'}  {item['name']}  every {item['interval_minutes']}m  next={item['next_run_at']}")
+        elif args.action == "due":
+            items = store.due()
+            for item in items:
+                print(f"{item['id']}  {item['name']}  query={item['query']}  score>={item['min_score']}")
+                if args.mark:
+                    store.mark_scheduled(item["id"])
+        else:
+            item = store.set_enabled(args.id, args.action == "enable")
+            print(f"{item['id']}  {'enabled' if item['enabled'] else 'disabled'}")
+    except (KeyError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    return 0
+
+
+def alerts_command(argv: list[str]) -> int:
+    p = argparse.ArgumentParser(prog="snb alerts", description="Show deterministic changes since the previous discovery run")
+    p.add_argument("--history-db", default=DEFAULT_DB)
+    p.add_argument("--run", type=int, default=None)
+    p.add_argument("--min-move", type=float, default=2.0)
+    args = p.parse_args(argv)
+    result = changes_since_previous_run(History(args.history_db), args.run, min_move=args.min_move)
+    if result["base"] is None:
+        print("No previous discovery run is available for comparison.")
+        return 0
+    print(f"Run {result['base']} -> {result['run']}")
+    for alert in result["alerts"]:
+        if alert["type"] == "score_change":
+            print(f"SCORE_CHANGE @{alert['login']}: {alert['from']:g} -> {alert['to']:g} ({alert['delta']:+g})")
+        else:
+            print(f"{alert['type'].upper()} @{alert['login']} ({alert['score']:g})")
+    if not result["alerts"]:
+        print("No changes above the configured threshold.")
+    return 0

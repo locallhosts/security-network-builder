@@ -29,7 +29,7 @@ def readiness() -> dict[str, object]:
     checks["durable_database"] = (
         "ok"
         if (
-            not database_url
+            not production
             or database_url.startswith(("postgresql://", "postgres://"))
         )
         else "error"

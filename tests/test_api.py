@@ -15,6 +15,37 @@ def test_health():
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
 
+def test_interactive_docs_are_renderable_under_csp():
+    client = TestClient(app)
+    docs = client.get("/docs")
+    assert docs.status_code == 200
+    assert "swagger-ui-bundle.js" in docs.text
+    assert "cdn.jsdelivr.net" in docs.text
+    assert "https://cdn.jsdelivr.net" in docs.headers["content-security-policy"]
+    redoc = client.get("/redoc")
+    assert redoc.status_code == 200
+    assert "redoc.standalone.js" in redoc.text
+
+
+def test_public_graph_build_uses_current_search(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNB_HISTORY_DB", str(tmp_path / "history.db"))
+    monkeypatch.setattr(
+        "snb.api.app.GitHubClient.search_repositories",
+        lambda self, query, per_page=30, page=1, sort="stars": [
+            {"full_name": "acme/runtime-security", "description": "runtime security", "stargazers_count": 25, "language": "Go", "owner": {"login": "alice", "type": "User", "html_url": "https://github.com/alice"}},
+            {"full_name": "acme/ebpf-tool", "description": "eBPF security", "stargazers_count": 20, "language": "Go", "owner": {"login": "bob", "type": "User", "html_url": "https://github.com/bob"}},
+        ],
+    )
+    monkeypatch.setattr("snb.api.app.analyse", lambda *args, **kwargs: [])
+    response = TestClient(app).post("/api/public/graph/build", json={"query": "runtime security"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["source"] == "github-search"
+    assert data["query"] == "runtime security"
+    assert data["candidates"] == 2
+    assert data["engineers"] == 0
+    assert data["graph"]["nodes"] == []
+
 
 def test_protected_endpoint_requires_key(monkeypatch):
     monkeypatch.setenv("API_KEY", "secret")
@@ -178,6 +209,7 @@ def test_openapi_contract_exposes_public_and_private_routes():
     assert "/api/health" in paths
     assert "/api/search" in paths
     assert "/api/graph" in paths
+    assert "/api/public/graph/build" in paths
     assert "/api/public/engineers/{login}" in paths
     assert "/api/runs" in paths
     assert "/api/runs/latest" in paths
@@ -381,6 +413,7 @@ def test_public_web_ui_exposes_profile_and_graph_controls():
     assert 'id="community"' in response.text
     assert 'id="centrality"' in response.text
     assert 'id="apply-graph"' in response.text
+    assert 'id="build-graph"' in response.text
     assert "loadEngineer(login)" in response.text
     assert "Relationship details" in response.text
 

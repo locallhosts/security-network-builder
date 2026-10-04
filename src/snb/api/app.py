@@ -183,6 +183,9 @@ class GraphResponse(BaseModel):
     edges: list[dict[str, Any]]
     communities: list[Any]
     generated_at: str | None = None
+    snapshot_created_at: str | None = None
+    run_id: int | None = None
+    source: str = "snb-analysis"
     filters: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -1331,11 +1334,12 @@ def graph(
     filters = {"community": community, "min_centrality": min_centrality, "edge_type": edge_type, "node_type": node_type, "max_nodes": max_nodes}
     generated_at = datetime.now(timezone.utc).isoformat()
     if run_id is None:
-        return GraphResponse(nodes=[], edges=[], communities=[], generated_at=generated_at, filters=filters)
+        return GraphResponse(nodes=[], edges=[], communities=[], generated_at=generated_at, snapshot_created_at=None, run_id=None, source="snb-analysis", filters=filters)
     data = h.get_run(run_id)
     if not data:
-        return GraphResponse(nodes=[], edges=[], communities=[], generated_at=generated_at, filters=filters)
+        return GraphResponse(nodes=[], edges=[], communities=[], generated_at=generated_at, snapshot_created_at=None, run_id=run_id, source="snb-analysis", filters=filters)
     raw = data.get("graph", {"nodes": [], "edges": [], "communities": []})
+    snapshot_created_at = (data.get("run") or {}).get("created_at")
     nodes = [n for n in raw.get("nodes", []) if float(n.get("centrality", 0)) >= min_centrality and (community is None or n.get("community") == community)]
     nodes.sort(key=lambda n: (-float(n.get("centrality", 0)), -float(n.get("score", 0)), str(n.get("login", "")).lower()))
     nodes = nodes[:max_nodes]
@@ -1353,4 +1357,4 @@ def graph(
             continue
         edges.append(edge)
     communities = [c for c in raw.get("communities", []) if any(m in allowed for m in c.get("members", []))]
-    return GraphResponse(nodes=nodes, edges=edges, communities=communities, generated_at=generated_at, filters=filters)
+    return GraphResponse(nodes=nodes, edges=edges, communities=communities, generated_at=generated_at, snapshot_created_at=snapshot_created_at, run_id=run_id, source="snb-analysis", filters=filters)

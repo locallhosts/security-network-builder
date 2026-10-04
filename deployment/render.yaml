@@ -23,3 +23,5 @@ services:
         sync: false
       - key: SNB_ENV
         value: production
+      - key: SNB_ALLOWED_HOSTS
+        value: security-network-builder.onrender.com

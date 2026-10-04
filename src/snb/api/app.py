@@ -713,6 +713,16 @@ def build_public_graph(payload: PublicGraphBuildRequest, request: Request, respo
         enrich_rest(client, recs)
         recs.sort(key=lambda r: r.score, reverse=True)
 
+    if not recs:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "no_engineers_matched",
+                "message": "The current GitHub search produced candidates, but SNB analysis returned no engineers. Try a broader query, lower the minimum score, or adjust the filters.",
+                "candidates": len(candidates),
+            },
+        )
+
     graph = build_graph(recs).to_dict()
     org_summary = analyze_organization_intelligence(recs)
     run_id = None

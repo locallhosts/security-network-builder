@@ -113,11 +113,46 @@ class GitHubClient:
         self._last_search = time.monotonic()
 
     # -- REST ----------------------------------------------------------
-    def search_repositories(self, query: str, per_page: int = 30, sort: str = "stars") -> list[dict[str, Any]]:
+    def search_repositories(
+        self,
+        query: str,
+        per_page: int = 30,
+        sort: str = "stars",
+        page: int = 1,
+    ) -> list[dict[str, Any]]:
         self._throttle_search()
+        params = {
+            "q": query,
+            "order": "desc",
+            "per_page": min(per_page, 100),
+            "page": max(page, 1),
+        }
+        if sort and sort != "best-match":
+            params["sort"] = sort
+        data = self._request("/search/repositories", params)
+        return data.get("items", [])
+
+    def search_users(
+        self,
+        query: str,
+        per_page: int = 30,
+        sort: str = "followers",
+        page: int = 1,
+    ) -> list[dict[str, Any]]:
+        """Search public GitHub users with bounded, read-only search."""
+        self._throttle_search()
+        allowed_sort = {"followers", "repositories", "joined"}
+        if sort not in allowed_sort:
+            sort = "followers"
         data = self._request(
-            "/search/repositories",
-            {"q": query, "sort": sort, "order": "desc", "per_page": min(per_page, 100)},
+            "/search/users",
+            {
+                "q": query,
+                "sort": sort,
+                "order": "desc",
+                "per_page": min(per_page, 100),
+                "page": max(page, 1),
+            },
         )
         return data.get("items", [])
 

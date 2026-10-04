@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Security Network Builder — public security engineering discovery and relationship intelligence.">
+<title>Security Network Builder</title>
+<style>
+:root{--bg:#f7f9fc;--surface:#fff;--surface2:#f2f5f9;--line:#dbe2ea;--text:#172033;--muted:#617087;--accent:#1769e0;--accent2:#0f4fb8;--good:#15803d;--warn:#b45309;--danger:#b42318;--shadow:0 10px 35px rgba(31,45,61,.08)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}.shell{width:min(1440px,calc(100% - 40px));margin:auto}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.topbar-inner{height:68px;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:-.02em}.mark{width:34px;height:34px;border-radius:10px;background:var(--accent);display:grid;place-items:center;color:#fff;font-weight:900}.nav{display:flex;gap:6px}.nav a{color:var(--muted);text-decoration:none;padding:8px 10px;border-radius:8px}.nav a:hover{background:var(--surface2);color:var(--text)}
+.hero{padding:56px 0 34px;display:grid;grid-template-columns:1.5fr .8fr;gap:30px;align-items:end}.eyebrow{color:var(--accent);font-weight:750;text-transform:uppercase;letter-spacing:.1em;font-size:11px}.hero h1{font-size:clamp(34px,5vw,64px);line-height:1.02;letter-spacing:-.055em;margin:8px 0 14px}.hero p{font-size:17px;color:var(--muted);max-width:780px}.hero-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow)}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.metric b{display:block;font-size:25px}.metric span{color:var(--muted);font-size:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);margin:18px 0;padding:22px}.panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:18px}.panel h2{margin:0;font-size:21px;letter-spacing:-.025em}.muted{color:var(--muted)}.toolbar{display:grid;grid-template-columns:minmax(220px,1fr) 170px 150px 180px auto;gap:10px;align-items:end}.field{display:grid;gap:6px;color:var(--muted);font-size:12px;font-weight:650}.field input,.field select{width:100%;background:#fff;color:var(--text);border:1px solid #cbd5e1;border-radius:9px;padding:10px 11px;outline:none}.field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(23,105,224,.12)}
+.btn{border:1px solid #c8d2df;background:#fff;color:var(--text);border-radius:9px;padding:10px 13px;font-weight:700}.btn:hover{border-color:#9aa9bb;background:#f8fafc}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.primary:hover{background:var(--accent2)}.btn:disabled{opacity:.45;cursor:not-allowed}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #0f4fb8;outline-offset:2px}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:-2px -22px 18px;padding:0 22px}.tab{border:0;background:transparent;color:var(--muted);padding:12px 14px;border-bottom:2px solid transparent;font-weight:750}.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.status{min-height:22px;margin:13px 0;color:var(--muted)}.status.error{color:var(--danger)}.status.success{color:var(--good)}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.result{border:1px solid var(--line);border-radius:12px;padding:16px;background:#fff;transition:.15s}.result:hover{box-shadow:0 7px 22px rgba(31,45,61,.08);transform:translateY(-1px)}.result-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.result h3{margin:0;font-size:16px}.result h3 a,.result a{color:var(--accent);text-decoration:none}.result h3 a:hover,.result a:hover{text-decoration:underline}.meta{color:var(--muted);font-size:12px}.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}.chip{border:1px solid var(--line);background:var(--surface2);border-radius:999px;padding:3px 8px;color:var(--muted);font-size:11px}.avatar{width:42px;height:42px;border-radius:10px;background:#e8eef8;object-fit:cover}.user-card{display:grid;grid-template-columns:auto 1fr;gap:12px}.user-card .body{min-width:0}.user-actions{margin-top:12px;display:flex;gap:7px}
+.pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px}.pagination .group{display:flex;gap:8px}
+.profile{background:#fbfdff;border:1px solid var(--line);border-radius:13px;padding:18px;margin-top:18px}.profile-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}.repo-list{display:grid;gap:8px}.repo-mini{padding:11px;border:1px solid var(--line);border-radius:9px;background:#fff}.repo-mini strong{display:block}
+.graph-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.graph-tools .field{min-width:150px}.graph-wrap{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#fff}.graph-wrap svg{display:block;width:100%;height:650px}.graph-bg{fill:#fff}.edge{stroke:#9aa9bb;opacity:.55}.edge.strong{stroke:#52739d}.node{cursor:pointer}.node circle{stroke:#fff;stroke-width:2;filter:drop-shadow(0 2px 3px rgba(0,0,0,.15))}.node text{font-size:11px;fill:#26364d;pointer-events:none}.node.selected circle{stroke:#1769e0;stroke-width:4}.node.neighbor circle{stroke:#b45309;stroke-width:3}.graph-hint{position:absolute;right:12px;top:12px;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:8px;padding:8px;color:var(--muted);font-size:11px}
+.graph-bottom{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}.data-box{border:1px solid var(--line);border-radius:10px;padding:13px;background:#fbfdff}.data-box h3{margin:0 0 8px;font-size:13px}.fallback{max-height:240px;overflow:auto;margin:0;padding-left:18px}.skeleton{height:110px;border-radius:12px;background:linear-gradient(90deg,#f2f5f9 25%,#e7edf5 50%,#f2f5f9 75%);background-size:200% 100%;animation:skeleton 1.2s infinite}@keyframes skeleton{to{background-position:-200% 0}}.empty{padding:35px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
+footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+@media(max-width:1000px){.hero{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr 1fr}.toolbar .field:first-child{grid-column:1/-1}.results{grid-template-columns:1fr}.profile-grid,.graph-bottom{grid-template-columns:1fr}}
+@media(max-width:650px){.shell{width:min(100% - 20px,1440px)}.topbar-inner{height:auto;padding:12px 0}.nav{display:none}.toolbar{grid-template-columns:1fr}.toolbar .field:first-child{grid-column:auto}.hero{padding-top:35px}.panel{padding:16px}.tabs{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px}.graph-wrap svg{height:500px}}
+</style>
+</head>
+<body>
+<a class="sr-only" href="#search">Skip to discovery</a>
+<div class="topbar"><div class="shell topbar-inner">
+<div class="brand"><span class="mark">SN</span><span>Security Network Builder</span></div>
+<nav class="nav" aria-label="Primary"><a href="#search">Discovery</a><a href="#graph">Network</a><a href="#profile-card">Profiles</a><a href="/docs">API</a></nav>
+</div></div>
+
+<main class="shell">
+<section class="hero">
+<div><div class="eyebrow">Security intelligence platform</div><h1>Find the people, projects and relationships behind security engineering.</h1><p>Search public GitHub repositories and engineers, inspect evidence, and explore the security community as an interactive network. Read-only, evidence-first, and designed for serious research.</p></div>
+<div class="hero-card"><div class="metrics"><div class="metric"><b id="metric-nodes">—</b><span>graph nodes</span></div><div class="metric"><b id="metric-edges">—</b><span>relationships</span></div><div class="metric"><b id="metric-communities">—</b><span>communities</span></div></div><div id="rate-status" class="meta" style="margin-top:10px">Checking GitHub API capacity…</div></div>
+</section>
+
+<section class="panel" id="search">
+<div class="panel-head"><div><h2>Discovery</h2><div class="muted">Search repositories or GitHub engineers using the public API.</div></div><div class="actions"><button class="btn" id="export-results" type="button" disabled>Export CSV</button><button class="btn" id="export-json" type="button" disabled>Export JSON</button><button class="btn" id="export-markdown" type="button" disabled>Export Markdown</button></div></div>
+<div class="tabs"><button class="tab active" data-tab="repos">Repositories</button><button class="tab" data-tab="users">Engineers</button></div>
+
+<div id="repo-search">
+<form id="repo-form" class="toolbar">
+<label class="field">Search<input id="q" minlength="2" maxlength="100" autocomplete="off" placeholder="eBPF runtime security, cloud security" required></label>
+<label class="field">Language<select id="language"><option value="">Any language</option></select></label>
+<label class="field">Minimum stars<input id="min-stars" type="number" min="0" max="1000000" value="0"></label>
+<label class="field">Sort<select id="repo-sort"><option value="stars">Stars</option><option value="updated">Recently updated</option><option value="forks">Forks</option><option value="help-wanted-issues">Help wanted</option><option value="best-match">Best match</option></select></label>
+<button class="btn primary" type="submit">Search</button><button class="btn" id="advanced-toggle" type="button" aria-expanded="false">Advanced</button><button class="btn" id="history-toggle" type="button">History</button><button class="btn" id="save-search" type="button">Save search</button>
+</form><div id="history-panel" class="data-box" hidden><h3>Recent searches</h3><div id="history-list" class="chips"></div></div><div id="advanced-query" class="toolbar" hidden><label class="field">Owner<input id="owner" maxlength="39" placeholder="github-login"></label><label class="field">Topic<input id="topic" maxlength="50" placeholder="eBPF"></label><label class="field">Archived<select id="archived"><option value="">Any</option><option value="false">Exclude archived</option><option value="true">Archived only</option></select></label><label class="field">Forks<select id="fork"><option value="">Any</option><option value="false">Exclude forks</option><option value="true">Forks only</option></select></label></div>
+</div>
+
+<div id="user-search" hidden>
+<form id="user-form" class="toolbar">
+<label class="field">Find an engineer<input id="uq" minlength="2" maxlength="100" autocomplete="off" placeholder="security engineer, kubernetes, red team" required></label>
+<div></div><div></div>
+<label class="field">Sort<select id="user-sort"><option value="followers">Followers</option><option value="repositories">Repositories</option><option value="joined">Joined</option></select></label>
+<button class="btn primary" type="submit">Search people</button>
+</form>
+</div>
+
+<div id="status" class="status" role="status" aria-live="polite"></div>
+<div id="results" class="results" aria-live="polite"></div>
+<div class="pagination"><span id="page-label" class="muted">Page 1</span><div class="group"><button class="btn" id="prev" type="button" disabled>Previous</button><button class="btn" id="next" type="button" disabled>Next</button></div></div>
+</section>
+
+<section class="panel" id="profile-card" hidden>
+<div class="panel-head"><div><h2 id="profile-title">Engineer profile</h2><div class="muted">Public GitHub data and recent engineering evidence.</div></div><div class="actions"><button class="btn" id="export-profile" type="button" disabled>Export profile JSON</button><button class="btn" id="export-profile-md" type="button" disabled>Profile Markdown</button><button class="btn" id="share-profile" type="button" disabled>Copy share link</button><button class="btn" id="close-profile" type="button">Close</button></div></div>
+<div id="profile" class="profile"></div><div class="toolbar"><label class="field">Compare with<input id="compare-login" maxlength="39" placeholder="another-github-login"></label><button class="btn" id="compare-profile" type="button">Compare</button></div><div id="compare-result" class="profile" hidden></div>
+</section>
+
+<section class="panel" id="workspace-card">
+<div class="panel-head"><div><h2>Private investigation workspace</h2><div class="muted">Optional analyst workspace. Requires an API key and never exposes notes to public endpoints.</div></div></div>
+<div class="toolbar">
+<label class="field">API key<input id="workspace-key" type="password" autocomplete="off" placeholder="Private API key"></label>
+<label class="field">Workspace title<input id="workspace-title" maxlength="120" placeholder="e.g. Runtime security research"></label>
+<button class="btn primary" id="workspace-create" type="button">Create workspace</button>
+</div>
+<div id="workspace-status" class="status" aria-live="polite"></div>
+<div class="toolbar">
+<label class="field">Workspace<select id="workspace-select"><option value="">Select workspace</option></select></label>
+<label class="field">Analyst status<select id="workspace-status-select"><option value="open">Open</option><option value="reviewing">Reviewing</option><option value="closed">Closed</option></select></label>
+<label class="field">Tags<input id="workspace-tags" placeholder="cloud, ebpf, review"></label>
+<button class="btn" id="workspace-refresh" type="button">Refresh</button><button class="btn" id="workspace-update" type="button">Update</button><button class="btn" id="workspace-export" type="button">Export bundle</button><button class="btn" id="workspace-delete" type="button">Delete</button>
+</div>
+<div class="toolbar">
+<label class="field">Add public engineer/repository<input id="workspace-item" placeholder="@login or owner/repository"></label>
+<select id="workspace-item-kind"><option value="engineer">Engineer</option><option value="repository">Repository</option></select>
+<input id="workspace-item-url" placeholder="Optional GitHub URL">
+<button class="btn" id="workspace-add-item" type="button">Add evidence</button>
+<label class="field">Private note<textarea id="workspace-note" maxlength="10000" rows="3" placeholder="Analyst-only observation"></textarea></label>
+<button class="btn" id="workspace-add-note" type="button">Add note</button>
+</div>
+<div id="workspace-view" class="profile" hidden></div>
+</section>
+<section class="panel" id="graph">
+<div class="panel-head"><div><h2>Security community network</h2><div class="muted">Explore relationship strength, communities, centrality and individual engineers.</div></div><div class="actions"><button class="btn" id="download-svg" type="button">Download SVG</button><button class="btn" id="download-graph" type="button">Download graph JSON</button><button class="btn" id="download-graph-md" type="button">Graph report</button></div></div>
+<div class="graph-tools">
+<label class="field">Community<select id="community"><option value="">All communities</option></select></label>
+<label class="field">Min centrality<input id="centrality" type="number" min="0" max="1" step=".05" value="0"></label>
+<label class="field">Find node<input id="node-filter" type="search" placeholder="@login"></label><label class="field">Path from<input id="path-from" placeholder="alice"></label><label class="field">Path to<input id="path-to" placeholder="bob"></label>
+<button class="btn" id="apply-graph" type="button">Apply</button><button class="btn" id="shortest-path" type="button">Shortest path</button><button class="btn" id="zoom-out" type="button" aria-label="Zoom out">−</button><button class="btn" id="zoom-in" type="button" aria-label="Zoom in">+</button><button class="btn" id="reset-graph" type="button">Reset view</button>
+</div>
+<div class="status" id="graph-status" aria-live="polite"></div><div class="graph-tools"><label class="field">Edge type<select id="edge-type"><option value="">All relationships</option><option value="contributor">Repository contribution</option><option value="organization">Shared organization</option><option value="domain">Shared security domains</option></select></label></div>
+<div class="graph-wrap"><svg id="graph-svg" viewBox="0 0 1200 650" role="img" aria-label="Interactive security community graph. Use the accessible graph data below to navigate relationships." tabindex="0"></svg><div class="graph-hint">Scroll to zoom · drag empty space to pan · drag nodes · click a node for profile</div></div>
+<div class="graph-bottom"><div class="data-box"><h3>Community summary</h3><div id="community-summary" class="fallback"></div></div><div class="data-box"><h3>Centrality ranking</h3><ol id="centrality-ranking" class="fallback"></ol></div><div class="data-box"><h3>Graph legend</h3><div class="chips"><span class="chip">Blue · community 0</span><span class="chip">Purple · community 1</span><span class="chip">Green · community 3</span><span class="chip">Node size · score</span><span class="chip">Edge width · relationship weight</span></div></div><div class="data-box"><h3>Relationship details</h3><div id="edge-details" class="muted">Select a node to inspect its relationships.</div></div><div class="data-box"><h3>Accessible graph data</h3><ul id="graph-fallback" class="fallback"></ul></div></div>
+</section>
+</main>
+<footer class="shell">Security Network Builder · public, read-only GitHub discovery · GitHub content is treated as untrusted input.</footer>
+
+<script>
+const state={mode:"repos",query:"",page:1,limit:12,results:[],sort:"stars",profile:null};
+const searchHistory=JSON.parse(sessionStorage.getItem("snb-search-history")||"[]");const savedSearches=JSON.parse(localStorage.getItem("snb-saved-searches")||"[]");
+let graphState={nodes:[],edges:[],communities:[]}, view={scale:1,tx:0,ty:0}, selectedNode=null, pathState=[];
+const $=s=>document.querySelector(s);
+function clear(el){while(el.firstChild)el.removeChild(el.firstChild)}
+function text(parent,value){parent.appendChild(document.createTextNode(String(value??"")))}
+function el(tag,attrs={},...children){const n=document.createElement(tag);for(const[k,v]of Object.entries(attrs)){if(k==="class")n.className=v;else if(k==="text")n.textContent=v;else if(k==="onclick")n.addEventListener("click",v);else n.setAttribute(k,v)}children.flat().forEach(c=>{if(c instanceof Node)n.appendChild(c);else if(c!==null&&c!==undefined)text(n,c)});return n}
+function githubLink(url,label="GitHub"){if(typeof url!=="string"||!/^https:\/\/(www\.)?github\.com\//.test(url))return null;return el("a",{href:url,target:"_blank",rel:"noopener noreferrer"},label)}
+function setStatus(msg,type=""){const n=$("#status");n.textContent=msg;n.className="status"+(type?" "+type:"")}
+function setGraphStatus(msg){$("#graph-status").textContent=msg}
+function download(name,content,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function markdownSearch(){const stamp=new Date().toISOString();const title=state.mode==="repos"?"Repository search":"Engineer search";let out="# "+title+"\n\n- Query: "+state.query+"\n- Page: "+state.page+"\n- Source: GitHub public API\n- Exported: "+stamp+"\n- Schema: 1\n\n";if(state.mode==="repos"){out+="| Repository | Owner | Stars | Language | URL |\n|---|---|---:|---|---|\n";state.results.forEach(x=>{out+="| "+String(x.repository||"").replaceAll("|","\\|")+" | "+String(x.owner||"")+" | "+Number(x.stars||0)+" | "+String(x.language||"")+" | "+String(x.url||"")+" |\n"})}else{out+="| Engineer | Followers | Public repos | URL |\n|---|---:|---:|---|\n";state.results.forEach(x=>{out+="| @"+x.login+" | "+Number(x.followers||0)+" | "+Number(x.public_repos||0)+" | "+String(x.url||"")+" |\n"})}return out}\nfunction csv(rows){if(!rows.length)return "";const cols=Object.keys(rows[0]);const esc=v=>'"'+String(v??"").replaceAll('"','""')+'"';return [cols.map(esc).join(","),...rows.map(r=>cols.map(k=>esc(r[k])).join(","))].join("\n")}
+function apiUrl(path,params){const u=new URL(path,location.origin);Object.entries(params).forEach(([k,v])=>{if(v!==""&&v!==null&&v!==undefined)u.searchParams.set(k,v)});return u}
+async function getJson(url){const r=await fetch(url,{headers:{Accept:"application/json"}});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.detail||"Request failed");return d}
+
+function renderRepoResults(){
+ clear($("#results"));const items=state.results;
+ if(!items.length){$("#results").appendChild(el("div",{class:"empty"},"No repositories found. Try a broader query."));return}
+ const langs=[...new Set(items.map(x=>x.language).filter(Boolean))].sort(), select=$("#language"), current=select.value;
+ clear(select);select.appendChild(el("option",{value:""},"Any language"));langs.forEach(v=>select.appendChild(el("option",{value:v},v)));if(langs.includes(current))select.value=current;
+ items.forEach(item=>{
+  const card=el("article",{class:"result"});
+  const title=el("h3",{},item.repository||"Unnamed repository");const link=githubLink(item.url);const top=el("div",{class:"result-top"},title,link||"");card.appendChild(top);
+  card.appendChild(el("p",{class:"muted"},item.description||"No description provided."));
+  card.appendChild(el("div",{class:"meta"},"★ "+Number(item.stars||0).toLocaleString()+" · "+(item.language||"Unknown")+" · owner "+(item.owner||"unknown")));
+  const actions=el("div",{class:"user-actions"});
+  if(item.owner)actions.appendChild(el("button",{class:"btn",onclick:()=>loadEngineer(item.owner)},"View engineer"));
+  card.appendChild(actions);$("#results").appendChild(card);
+ });
+}
+function renderUserResults(){
+ clear($("#results"));const items=state.results;
+ if(!items.length){$("#results").appendChild(el("div",{class:"empty"},"No engineers found. Try a skill, company, or username."));return}
+ items.forEach(item=>{
+  const avatar=el("div",{class:"avatar",text:(item.login||"?").slice(0,2).toUpperCase()});
+  const card=el("article",{class:"result user-card"},avatar,el("div",{class:"body"},
+    el("div",{class:"result-top"},el("h3",{},el("a",{href:item.url||"#",target:"_blank",rel:"noopener noreferrer"},"@"+item.login)),el("span",{class:"chip"},item.type)),
+    el("div",{class:"meta"},Number(item.followers||0).toLocaleString()+" followers · "+Number(item.public_repos||0).toLocaleString()+" public repos"),
+    el("div",{class:"user-actions"},el("button",{class:"btn primary",onclick:()=>loadEngineer(item.login)},"Open profile"))
+  ));$("#results").appendChild(card);
+ });
+}
+async function search(){
+ const q=state.mode==="repos"?$("#q").value.trim():$("#uq").value.trim();if(q.length<2)return;
+ state.query=q;state.page=1;state.sort=state.mode==="repos"?$("#repo-sort").value:$("#user-sort").value;setStatus("Searching…");clear($("#results"));for(let i=0;i<4;i++)$("#results").appendChild(el("div",{class:"skeleton","aria-hidden":"true"}));$("#prev").disabled=$("#next").disabled=true;
+ try{
+  const params={q,limit:state.limit,page:state.page,sort:state.sort};
+  let d;
+  if(state.mode==="repos"){params.language=$("#language").value;params.min_stars=$("#min-stars").value;params.owner=$("#owner").value.trim();params.topic=$("#topic").value.trim();params.archived=$("#archived").value;params.fork=$("#fork").value;d=await getJson(apiUrl("/api/search",params))}
+  else d=await getJson(apiUrl("/api/users/search",params));
+  state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults(); if(state.mode==="repos"){searchHistory.unshift({q,language:params.language||"",min_stars:params.min_stars||"0",sort:params.sort,owner:params.owner||"",topic:params.topic||"",at:new Date().toISOString()});sessionStorage.setItem("snb-search-history",JSON.stringify(searchHistory.slice(0,20)));renderHistory()}
+  setStatus(state.results.length+" result(s) on page "+d.page+" · source "+(d.source||"github")+" · fetched "+new Date(d.generated_at).toLocaleTimeString(),"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit;$("#export-results").disabled=!state.results.length;$("#export-json").disabled=!state.results.length;$("#export-markdown").disabled=!state.results.length;
+ }catch(e){clear($("#results"));$("#results").appendChild(el("div",{class:"empty"},e.message));setStatus("");$("#status").appendChild(el("span",{},"Search failed · "));$("#status").appendChild(el("button",{class:"btn primary",onclick:()=>search()},"Retry"));$("#status").className="status error";$("#export-results").disabled=true;$("#export-json").disabled=true;$("#export-markdown").disabled=true}
+}
+async function page(delta){
+ const target=state.page+delta;if(target<1||!state.query)return;state.page=target;setStatus("Loading page "+target+"…");$("#prev").disabled=$("#next").disabled=true;
+ try{
+  const params={q:state.query,limit:state.limit,page:target,sort:state.sort};let d;
+  if(state.mode==="repos"){params.language=$("#language").value;params.min_stars=$("#min-stars").value;params.owner=$("#owner").value.trim();params.topic=$("#topic").value.trim();params.archived=$("#archived").value;params.fork=$("#fork").value;d=await getJson(apiUrl("/api/search",params))}
+  else d=await getJson(apiUrl("/api/users/search",params));
+  state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults();setStatus(state.results.length+" result(s) on page "+d.page+" · source "+(d.source||"github")+" · fetched "+new Date(d.generated_at).toLocaleTimeString(),"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit
+ }catch(e){state.page=Math.max(1,target-delta);setStatus(e.message,"error");$("#prev").disabled=state.page<=1}
+}
+async function loadEngineer(n.login){
+ const card=$("#profile-card"),box=$("#profile");card.hidden=false;clear(box);box.appendChild(el("div",{class:"empty"},"Loading @"+login+"…"));card.scrollIntoView({behavior:"smooth",block:"start"});
+ try{
+  const d=await getJson("/api/public/engineers/"+encodeURIComponent(login));state.profile=d;$("#export-profile").disabled=false;$("#export-profile-md").disabled=false;$("#share-profile").disabled=false;clear(box);$("#profile-title").textContent="Engineer · @"+d.login;
+  const left=el("div"),right=el("div");
+  const head=el("div",{class:"result-top"},el("div",{},el("h3",{},d.name||("@"+d.login)),el("div",{class:"meta"},"@"+d.login+" · "+Number(d.followers||0).toLocaleString()+" followers · "+Number(d.public_repos||0).toLocaleString()+" public repositories")),githubLink(d.url,"GitHub profile")||"");
+  if(d.score!==null&&d.score!==undefined){left.appendChild(el("div",{class:"metric"},"Security score ",el("b",{},Number(d.score).toFixed(1))));left.appendChild(el("div",{class:"chips"},(d.matched_domains||[]).map(x=>el("span",{class:"chip"},x))));left.appendChild(el("h3",{},"Score evidence"));left.appendChild(el("ul",{class:"fallback"},(d.evidence||[]).map(x=>el("li",{},x))));}
+  left.appendChild(head);left.appendChild(el("p",{class:"muted"},d.bio||"No public bio."));
+  if(d.company)left.appendChild(el("p",{class:"meta"},"Company · "+d.company));
+  left.appendChild(el("h3",{},"Security domains"));left.appendChild(el("div",{class:"chips"},(d.security_domains||[]).map(x=>el("span",{class:"chip"},x))));
+  left.appendChild(el("h3",{},"Detected skills"));left.appendChild(el("div",{class:"chips"},(d.skills||[]).slice(0,24).map(x=>el("span",{class:"chip"},x))));
+  const trends=d.contribution_trends||{};
+  left.appendChild(el("h3",{},"Repository activity trend"));left.appendChild(el("div",{class:"metrics"},el("div",{class:"metric"},el("b",{},Number(trends.last_30_days||0))," last 30d"),el("div",{class:"metric"},el("b",{},Number(trends.last_90_days||0))," last 90d"),el("div",{class:"metric"},el("b",{},Number(trends.last_365_days||0))," last 365d")));
+  left.appendChild(el("h3",{},"Organizations"));left.appendChild(el("div",{class:"chips"},(d.organizations||[]).map(o=>el("span",{class:"chip"},o))));
+  left.appendChild(el("h3",{},"Recent activity"));left.appendChild(el("ul",{class:"fallback"},(d.activity||[]).slice(0,10).map(a=>el("li",{},a.repository+(a.pushed_at?" · "+a.pushed_at:"")+(a.language?" · "+a.language:"")))));
+  try{const rel=await getJson("/api/public/engineers/"+encodeURIComponent(d.login)+"/relationships");left.appendChild(el("h3",{},"Relationship evidence"));left.appendChild(el("ul",{class:"fallback"},(rel.relationships||[]).slice(0,12).map(x=>el("li",{},x.a+" ↔ "+x.b+" · weight "+x.weight+" · "+(x.reasons||[]).join("; ")))))}catch{}
+  right.appendChild(el("h3",{},"Repository health signals"));const list=el("div",{class:"repo-list"});(d.repository_signals||[]).slice(0,12).forEach(r=>{const repo=(d.repositories||[]).find(x=>x.name===r.name);list.appendChild(el("div",{class:"repo-mini"},el("strong",{},githubLink(repo?.url,r.name)||r.name),el("span",{class:"meta"},"★ "+Number(r.stars||0)+" · forks "+Number(r.forks||0)+" · "+r.maintenance),el("div",{class:"muted"},(r.security_domains||[]).join(" · ")||"No configured security-domain match"))) });right.appendChild(list);
+  box.appendChild(el("div",{class:"profile-grid"},left,right));
+ }catch(e){state.profile=null;$("#export-profile").disabled=true;$("#export-profile-md").disabled=true;$("#share-profile").disabled=true;clear(box);box.appendChild(el("div",{class:"empty"},e.message))}
+}
+
+document.querySelectorAll(".tab").forEach(tab=>tab.addEventListener("click",()=>{
+ document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));tab.classList.add("active");state.mode=tab.dataset.tab;state.results=[];state.query="";state.page=1;clear($("#results"));$("#export-results").disabled=true;$("#export-json").disabled=true;$("#export-markdown").disabled=true;$("#page-label").textContent="Page 1";$("#prev").disabled=$("#next").disabled=true;$("#repo-search").hidden=state.mode!=="repos";$("#user-search").hidden=state.mode!=="users";setStatus("")
+}));
+$("#repo-form").addEventListener("submit",e=>{e.preventDefault();search()});$("#advanced-toggle").addEventListener("click",()=>{const n=$("#advanced-query"),open=n.hidden;n.hidden=!open;$("#advanced-toggle").setAttribute("aria-expanded",String(open))});function renderHistory(){const box=$("#history-list");clear(box);searchHistory.slice(0,10).forEach(h=>box.appendChild(el("button",{class:"btn",onclick:()=>{$("#q").value=h.q;$("#language").value=h.language;$("#min-stars").value=h.min_stars;$("#repo-sort").value=h.sort;$("#owner").value=h.owner;$("#topic").value=h.topic}},"History · "+h.q+" · "+h.sort)));savedSearches.slice(0,10).forEach(h=>box.appendChild(el("button",{class:"btn",onclick:()=>{$("#q").value=h.q;$("#language").value=h.language;$("#min-stars").value=h.min_stars;$("#repo-sort").value=h.sort;$("#owner").value=h.owner;$("#topic").value=h.topic}},"Saved · "+h.q+" · "+h.sort)));}$("#history-toggle").addEventListener("click",()=>{$("#history-panel").hidden=!$("#history-panel").hidden;renderHistory()});$("#save-search").addEventListener("click",()=>{if(!state.query)return;const item={mode:state.mode,q:state.query,sort:state.sort,language:$("#language").value,min_stars:$("#min-stars").value,owner:$("#owner").value.trim(),topic:$("#topic").value.trim()};if(!savedSearches.some(x=>JSON.stringify(x)===JSON.stringify(item))){savedSearches.unshift(item);localStorage.setItem("snb-saved-searches",JSON.stringify(savedSearches.slice(0,30)));setStatus("Search saved locally","success")}});$("#user-form").addEventListener("submit",e=>{e.preventDefault();search()});$("#prev").addEventListener("click",()=>page(-1));$("#next").addEventListener("click",()=>page(1));$("#close-profile").addEventListener("click",()=>$("#profile-card").hidden=true);let currentWorkspace=null;
+function workspaceHeaders(){return{"Content-Type":"application/json","X-API-Key":$("#workspace-key").value.trim()}}
+async function workspaceJson(url,options={}){const r=await fetch(url,{...options,headers:{...workspaceHeaders(),...(options.headers||{})}});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.detail||"Workspace request failed");return d}
+async function refreshWorkspaces(){try{const d=await workspaceJson("/api/workspaces");const sel=$("#workspace-select");clear(sel);sel.appendChild(el("option",{value:""},"Select workspace"));d.workspaces.forEach(w=>sel.appendChild(el("option",{value:w.id},w.title+" · "+w.status)));$("#workspace-status").textContent=d.workspaces.length+" private workspace(s)";}catch(e){$("#workspace-status").textContent=e.message}}
+$("#workspace-create").addEventListener("click",async()=>{try{const d=await workspaceJson("/api/workspaces",{method:"POST",body:JSON.stringify({title:$("#workspace-title").value})});currentWorkspace=d;await refreshWorkspaces();$("#workspace-select").value=d.id;renderWorkspace(d);}catch(e){$("#workspace-status").textContent=e.message}});
+$("#workspace-refresh").addEventListener("click",async()=>{await refreshWorkspaces();const id=$("#workspace-select").value;if(id)try{currentWorkspace=await workspaceJson("/api/workspaces/"+id);renderWorkspace(currentWorkspace)}catch(e){$("#workspace-status").textContent=e.message}});
+$("#workspace-select").addEventListener("change",async()=>{const id=$("#workspace-select").value;if(!id)return;try{currentWorkspace=await workspaceJson("/api/workspaces/"+id);renderWorkspace(currentWorkspace)}catch(e){$("#workspace-status").textContent=e.message}});
+$("#workspace-update").addEventListener("click",async()=>{if(!currentWorkspace)return;try{currentWorkspace=await workspaceJson("/api/workspaces/"+currentWorkspace.id,{method:"PATCH",body:JSON.stringify({status:$("#workspace-status-select").value,tags:$("#workspace-tags").value.split(",").map(x=>x.trim()).filter(Boolean)})});renderWorkspace(currentWorkspace)}catch(e){$("#workspace-status").textContent=e.message}});
+$("#workspace-add-item").addEventListener("click",async()=>{if(!currentWorkspace)return;try{currentWorkspace=await workspaceJson("/api/workspaces/"+currentWorkspace.id+"/items",{method:"POST",body:JSON.stringify({kind:$("#workspace-item-kind").value,value:$("#workspace-item").value,label:$("#workspace-item").value,source_url:$("#workspace-item-url").value||null})});renderWorkspace(currentWorkspace)}catch(e){$("#workspace-status").textContent=e.message}});
+$("#workspace-add-note").addEventListener("click",async()=>{if(!currentWorkspace)return;try{currentWorkspace=await workspaceJson("/api/workspaces/"+currentWorkspace.id+"/notes",{method:"POST",body:JSON.stringify({body:$("#workspace-note").value,source_url:null})});$("#workspace-note").value="";renderWorkspace(currentWorkspace)}catch(e){$("#workspace-status").textContent=e.message}});
+$("#workspace-export").addEventListener("click",async()=>{if(!currentWorkspace)return;try{const d=await workspaceJson("/api/workspaces/"+currentWorkspace.id+"/export");download("snb-investigation-"+currentWorkspace.id+".json",JSON.stringify(d,null,2),"application/json")}catch(e){$("#workspace-status").textContent=e.message}});
+$("#workspace-delete").addEventListener("click",async()=>{if(!currentWorkspace||!confirm("Delete this private workspace?"))return;try{await workspaceJson("/api/workspaces/"+currentWorkspace.id,{method:"DELETE"});currentWorkspace=null;$("#workspace-view").hidden=true;await refreshWorkspaces()}catch(e){$("#workspace-status").textContent=e.message}});
+function renderWorkspace(w){$("#workspace-view").hidden=false;$("#workspace-status-select").value=w.status;$("#workspace-tags").value=(w.tags||[]).join(", ");const box=$("#workspace-view");clear(box);box.appendChild(el("h3",{},w.title));box.appendChild(el("p",{class:"meta"},w.items.length+" evidence item(s) · "+w.notes.length+" private note(s)"));box.appendChild(el("h4",{},"Evidence"));box.appendChild(el("ul",{class:"fallback"},w.items.map(x=>el("li",{},x.kind+" · "+x.value+(x.source_url?" · "+x.source_url:"")))));box.appendChild(el("h4",{},"Private notes"));box.appendChild(el("ul",{class:"fallback"},w.notes.map(x=>el("li",{},x.body+(x.source_url?" · "+x.source_url:"")))));box.appendChild(el("h4",{},"Investigation timeline"));box.appendChild(el("ul",{class:"fallback"},(w.timeline||[]).map(x=>el("li",{},x.created_at+" · "+x.action+(x.detail?" · "+x.detail:"")))))}
+
+
+$("#export-json").addEventListener("click",()=>{if(state.results.length)download(state.mode==="repos"?"snb-repositories.json":"snb-engineers.json",JSON.stringify({schema_version:1,source:"github",query:state.query,exported_at:new Date().toISOString(),results:state.results},null,2),"application/json")});$("#export-markdown").addEventListener("click",()=>{if(state.results.length)download("snb-search-report.md",markdownSearch(),"text/markdown")});
+$("#export-profile").addEventListener("click",()=>{if(state.profile)download("snb-engineer-"+state.profile.login+".json",JSON.stringify({schema_version:1,source:"github",exported_at:new Date().toISOString(),profile:state.profile},null,2),"application/json")});$("#share-profile").addEventListener("click",async()=>{if(state.profile){const u=new URL(location.href);u.search="";u.searchParams.set("engineer",state.profile.login);try{await navigator.clipboard.writeText(u.toString());setStatus("Share link copied","success")}catch{setStatus(u.toString())}}});
+$("#compare-profile").addEventListener("click",async()=>{if(!state.profile)return;const other=$("#compare-login").value.trim();if(!other)return;const box=$("#compare-result");box.hidden=false;box.textContent="Comparing…";try{const d=await getJson(apiUrl("/api/public/engineers/compare",{first:state.profile.login,second:other}));clear(box);d.profiles.forEach(p=>box.appendChild(el("div",{class:"result"},el("h3",{},p.name||("@"+p.login)),el("div",{class:"meta"},"Score "+(p.score??"n/a")+" · "+p.repository_count+" repositories"),el("div",{class:"chips"},p.domains.map(x=>el("span",{class:"chip"},x))),el("p",{class:"muted"},"Skills: "+p.skills.slice(0,12).join(", "))));}catch(e){box.textContent=e.message}});
+$("#export-profile-md").addEventListener("click",()=>{if(state.profile){const p=state.profile;let m="# Engineer profile · @"+p.login+"\n\n- Source: GitHub public API\n- Exported: "+new Date().toISOString()+"\n- Score: "+(p.score??"n/a")+"\n- Domains: "+(p.matched_domains||[]).join(", ")+"\n- Skills: "+(p.skills||[]).join(", ")+"\n\n## Evidence\n"+(p.evidence||[]).map(x=>"- "+x).join("\n")+"\n\n## Repositories\n"+(p.repository_signals||[]).map(x=>"- "+x.name+" · "+x.maintenance+" · ★ "+x.stars).join("\n");download("snb-engineer-"+p.login+".md",m,"text/markdown")}});
+$("#export-results").addEventListener("click",()=>{
+ if(!state.results.length)return;
+ if(state.mode==="repos")download("snb-repositories.csv",csv(state.results.map(x=>({repository:x.repository,owner:x.owner,stars:x.stars,language:x.language,url:x.url,description:x.description}))),"text/csv");
+ else download("snb-engineers.csv",csv(state.results.map(x=>({login:x.login,type:x.type,followers:x.followers,public_repos:x.public_repos,url:x.url}))),"text/csv");
+});
+
+function graphFiltered(){
+ const min=Number($("#centrality").value||0),comm=$("#community").value,needle=$("#node-filter").value.trim().toLowerCase(),edgeType=$("#edge-type").value;
+ const nodes=(graphState.nodes||[]).filter(n=>Number(n.centrality||0)>=min&&(!comm||String(n.community)===comm)&&(!needle||String(n.login).toLowerCase().includes(needle)));
+ const allowed=new Set(nodes.map(n=>n.login));const edges=(graphState.edges||[]).filter(e=>allowed.has(e.a)&&allowed.has(e.b)&&(!edgeType||((edgeType==="contributor")&&(e.reasons||[]).some(x=>String(x).startsWith("both contribute")))||((edgeType==="organization")&&(e.reasons||[]).some(x=>String(x).startsWith("both in org")))||((edgeType==="domain")&&(e.reasons||[]).some(x=>String(x).includes("shared domains")))));
+ return {nodes,edges};
+}
+function graphColor(id){const palette=["#1769e0","#7c3aed","#0891b2","#15803d","#c2410c","#be123c","#475569"];return palette[Math.abs(Number(id)||0)%palette.length]}
+function layout(nodes,edges){
+ const W=1200,H=650,pos={};nodes.forEach((n,i)=>{const a=2*Math.PI*i/Math.max(nodes.length,1);pos[n.login]={x:W/2+Math.cos(a)*Math.min(420,150+nodes.length*7),y:H/2+Math.sin(a)*Math.min(245,90+nodes.length*5)}});
+ const links=edges.map(e=>[e.a,e.b]);const iterations=Math.min(70,20+nodes.length);
+ for(let it=0;it<iterations;it++){const force={};nodes.forEach(n=>force[n.login]={x:0,y:0});
+  for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){const a=pos[nodes[i].login],b=pos[nodes[j].login],dx=a.x-b.x,dy=a.y-b.y,d=Math.max(35,Math.hypot(dx,dy)),f=1800/(d*d);force[nodes[i].login].x+=dx/d*f;force[nodes[i].login].y+=dy/d*f;force[nodes[j].login].x-=dx/d*f;force[nodes[j].login].y-=dy/d*f}
+  links.forEach(([aa,bb])=>{const a=pos[aa],b=pos[bb];if(!a||!b)return;const dx=b.x-a.x,dy=b.y-a.y,d=Math.max(1,Math.hypot(dx,dy)),f=(d-150)*.004;force[aa].x+=dx/d*f;force[aa].y+=dy/d*f;force[bb].x-=dx/d*f;force[bb].y-=dy/d*f});
+  nodes.forEach(n=>{const p=pos[n.login],f=force[n.login];p.x=Math.max(30,Math.min(W-30,p.x+f.x*30));p.y=Math.max(30,Math.min(H-30,p.y+f.y*30))})
+ }
+ return pos;
+}
+function drawGraph(){
+ const svg=$("#graph-svg");clear(svg);const {nodes,edges}=graphFiltered();selectedNode=null;$("#edge-details").textContent="Select a node to inspect its relationships.";clear($("#graph-fallback"));
+ if(!nodes.length){svg.appendChild(elNS("text",{x:30,y:45,fill:"#617087"},"No nodes match the current filters."));setGraphStatus("No matching nodes");return}
+ const display=nodes.length>140?nodes.slice(0,140):nodes;const allowed=new Set(display.map(n=>n.login));const displayEdges=edges.filter(e=>allowed.has(e.a)&&allowed.has(e.b));const pos=layout(display,displayEdges);const ns="http://www.w3.org/2000/svg";
+ const root=document.createElementNS(ns,"g");root.setAttribute("transform",`translate(${view.tx} ${view.ty}) scale(${view.scale})`);svg.appendChild(root);
+ displayEdges.forEach(e=>{const a=pos[e.a],b=pos[e.b],line=document.createElementNS(ns,"line");line.setAttribute("x1",a.x);line.setAttribute("y1",a.y);line.setAttribute("x2",b.x);line.setAttribute("y2",b.y);line.setAttribute("stroke-width",String(Math.max(1,Math.min(8,Number(e.weight)||1))));line.setAttribute("class","edge"+(pathState.some(p=>((p[0]===e.a&&p[1]===e.b)||(p[0]===e.b&&p[1]===e.a)))?" strong":""));line.dataset.a=e.a;line.dataset.b=e.b;root.appendChild(line)});
+ let nodeIndex=0;
+ const renderNode=(n)=>{
+  const p=pos[n.login],g=document.createElementNS(ns,"g");g.setAttribute("class","node"+(pathState.includes(n.login)?" selected":""));g.dataset.login=n.login;
+  const circle=document.createElementNS(ns,"circle");circle.setAttribute("cx",p.x);circle.setAttribute("cy",p.y);circle.setAttribute("r",String(7+Math.min(18,Number(n.score||0)/4)));circle.setAttribute("fill",graphColor(n.community));g.appendChild(circle);
+  const title=document.createElementNS(ns,"title");title.textContent="@"+n.login+" · score "+Number(n.score||0)+" · centrality "+Number(n.centrality||0);g.appendChild(title);
+  const label=document.createElementNS(ns,"text");label.setAttribute("x",p.x+11);label.setAttribute("y",p.y+4);label.textContent="@"+n.login;g.appendChild(label);
+  let drag=false;
+  g.addEventListener("pointerdown",ev=>{drag=true;g.setPointerCapture(ev.pointerId);ev.stopPropagation()});
+  g.addEventListener("pointermove",ev=>{if(!drag)return;const r=svg.getBoundingClientRect();const x=(ev.clientX-r.left)/r.width*1200,y=(ev.clientY-r.top)/r.height*650;circle.setAttribute("cx",x);circle.setAttribute("cy",y);label.setAttribute("x",x+11);label.setAttribute("y",y+4);displayEdges.forEach(e=>{if(e.a!==n.login&&e.b!==n.login)return;const l=root.querySelector('line[data-a="'+CSS.escape(e.a)+'"][data-b="'+CSS.escape(e.b)+'"]');if(l){const other=e.a===n.login?pos[e.b]:pos[e.a];l.setAttribute("x1",e.a===n.login?x:other.x);l.setAttribute("y1",e.a===n.login?y:other.y);l.setAttribute("x2",e.b===n.login?x:other.x);l.setAttribute("y2",e.b===n.login?y:other.y)}})});
+  g.addEventListener("pointerup",()=>{if(drag){drag=false;showNode(n.login)}});
+  g.addEventListener("click",()=>showNode(n.login));root.appendChild(g);
+  const li=el("li",{},el("button",{class:"btn",onclick:()=>showNode(n.login)},"@"+n.login)," · score "+Number(n.score||0)+" · centrality "+Number(n.centrality||0));$("#graph-fallback").appendChild(li);
+ };
+ const renderChunk=()=>{
+  const chunk=display.slice(nodeIndex,nodeIndex+25);
+  chunk.forEach(renderNode);
+  nodeIndex+=chunk.length;
+  if(nodeIndex<display.length)requestAnimationFrame(renderChunk);
+  else setGraphStatus((nodes.length>140?"Showing 140 of ":"Showing ")+nodes.length+" nodes · "+displayEdges.length+" relationships");
+ };
+ renderChunk(); setGraphStatus((nodes.length>140?"Showing 140 of ":"Showing ")+nodes.length+" nodes · "+displayEdges.length+" relationships");
+}
+function elNS(tag,attrs,...children){const ns="http://www.w3.org/2000/svg",n=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));children.forEach(c=>{n.appendChild(document.createTextNode(c))});return n}
+function showNode(login){
+ selectedNode=login;const neighbors=new Set();(graphState.edges||[]).forEach(e=>{if(e.a===login)neighbors.add(e.b);if(e.b===login)neighbors.add(e.a)});document.querySelectorAll(".node").forEach(n=>{n.classList.toggle("selected",n.dataset.login===login);n.classList.toggle("neighbor",neighbors.has(n.dataset.login)&&n.dataset.login!==login)});const node=(graphState.nodes||[]).find(n=>n.login===login),rels=(graphState.edges||[]).filter(e=>e.a===login||e.b===login).sort((a,b)=>Number(b.weight)-Number(a.weight));
+ const box=$("#edge-details");clear(box);box.appendChild(el("div",{},el("strong",{},"@"+login)," · score "+Number(node?.score||0)+" · centrality "+Number(node?.centrality||0)));if(!rels.length)box.appendChild(el("p",{class:"muted"},"No recorded relationships."));rels.slice(0,20).forEach(e=>box.appendChild(el("p",{class:"meta"},"@"+e.a+" ↔ @"+e.b+" · weight "+Number(e.weight||0)+" · "+(e.reasons||[]).join("; "))));
+ loadEngineer(login)
+}
+function setGraphTransform(){const root=$("#graph-svg").firstElementChild;if(root)root.setAttribute("transform",`translate(${view.tx} ${view.ty}) scale(${view.scale})`)}
+function zoomGraph(factor){view.scale=Math.max(.45,Math.min(3,view.scale*factor));setGraphTransform()}
+$("#graph-svg").addEventListener("wheel",ev=>{ev.preventDefault();zoomGraph(ev.deltaY<0?1.12:.89)},{passive:false});
+let pan=null;
+$("#graph-svg").addEventListener("pointerdown",ev=>{if(ev.target.closest(".node"))return;pan={x:ev.clientX,y:ev.clientY,tx:view.tx,ty:view.ty};$("#graph-svg").setPointerCapture(ev.pointerId)});
+$("#graph-svg").addEventListener("pointermove",ev=>{if(!pan)return;const rect=$("#graph-svg").getBoundingClientRect();view.tx=pan.tx+(ev.clientX-pan.x)*1200/rect.width;view.ty=pan.ty+(ev.clientY-pan.y)*650/rect.height;setGraphTransform()});
+$("#graph-svg").addEventListener("pointerup",()=>{pan=null});
+$("#zoom-in").addEventListener("click",()=>zoomGraph(1.2));$("#zoom-out").addEventListener("click",()=>zoomGraph(.8333));
+$("#apply-graph").addEventListener("click",drawGraph);$("#edge-type").addEventListener("change",drawGraph);function shortestPath(from,to){const q=[from],prev=new Map([[from,null]]);while(q.length){const cur=q.shift();if(cur===to)break;(graphState.edges||[]).filter(e=>e.a===cur||e.b===cur).forEach(e=>{const nb=e.a===cur?e.b:e.a;if(!prev.has(nb)){prev.set(nb,cur);q.push(nb)}})}if(!prev.has(to))return [];const nodes=[];for(let n=to;n!==null;n=prev.get(n))nodes.unshift(n);return nodes}
+$("#shortest-path").addEventListener("click",()=>{const a=$("#path-from").value.trim().replace(/^@/,""),b=$("#path-to").value.trim().replace(/^@/,"");if(!a||!b)return;const nodes=shortestPath(a,b);if(!nodes.length){setGraphStatus("No path found between "+a+" and "+b);pathState=[];drawGraph();return}pathState=nodes;drawGraph();setGraphStatus("Shortest path · "+nodes.join(" → "))});
+$("#reset-graph").addEventListener("click",()=>{$("#community").value="";$("#centrality").value="0";$("#node-filter").value="";$("#edge-type").value="";view={scale:1,tx:0,ty:0};drawGraph()});
+$("#download-graph").addEventListener("click",()=>download("security-network-graph.json",JSON.stringify(graphState,null,2),"application/json"));$("#download-graph-md").addEventListener("click",()=>{const g=graphState;let m="# Security community graph report\n\n- Source: GitHub public data\n- Generated: "+(g.generated_at||new Date().toISOString())+"\n- Nodes: "+(g.nodes||[]).length+"\n- Relationships: "+(g.edges||[]).length+"\n- Communities: "+(g.communities||[]).length+"\n\n## Communities\n"+(g.communities||[]).map(c=>"- Community "+c.id+" · "+c.size+" members · "+(c.top_domain||"mixed")).join("\n")+"\n\n## Top centrality\n"+[...(g.nodes||[])].sort((a,b)=>Number(b.centrality)-Number(a.centrality)).slice(0,25).map(n=>"- @"+n.login+" · centrality "+n.centrality+" · score "+n.score).join("\n")+"\n";download("security-network-graph.md",m,"text/markdown")});
+$("#download-svg").addEventListener("click",()=>{const clone=$("#graph-svg").cloneNode(true);clone.setAttribute("xmlns","http://www.w3.org/2000/svg");download("security-network-graph.svg",new XMLSerializer().serializeToString(clone),"image/svg+xml")});
+
+async function loadUsage(){try{const d=await getJson("/api/usage");const r=d.search||{};const left=r.remaining!==undefined?r.remaining:"—";const limit=r.limit!==undefined?r.limit:"—";$("#rate-status").textContent="GitHub Search API · "+left+" / "+limit+" remaining";}catch(e){$("#rate-status").textContent="GitHub capacity unavailable · retry if searches fail";}}
+async function loadGraph(){
+ try{graphState=await getJson("/api/graph");const c=$("#community");clear(c);c.appendChild(el("option",{value:""},"All communities"));(graphState.communities||[]).forEach(x=>c.appendChild(el("option",{value:String(x.id)},"Community "+x.id+" · "+x.size+" members")));$("#metric-nodes").textContent=(graphState.nodes||[]).length;$("#metric-edges").textContent=(graphState.edges||[]).length;$("#metric-communities").textContent=(graphState.communities||[]).length;const cs=$("#community-summary");clear(cs);(graphState.communities||[]).forEach(c=>cs.appendChild(el("div",{class:"meta"},"Community "+c.id+" · "+c.size+" members · "+(c.top_domain||"mixed"))));const rank=$("#centrality-ranking");clear(rank);[...(graphState.nodes||[])].sort((a,b)=>Number(b.centrality)-Number(a.centrality)).slice(0,15).forEach(n=>rank.appendChild(el("li",{},el("button",{class:"btn",onclick:()=>showNode(n.login)},"@"+n.login)," · "+Number(n.centrality).toFixed(2))));drawGraph()}catch(e){setGraphStatus(e.message)}
+}
+const initialEngineer=new URLSearchParams(location.search).get("engineer");if(initialEngineer)loadEngineer(initialEngineer);
+loadUsage();loadGraph();
+</script>
+</body>
+</html>

@@ -64,13 +64,27 @@ def build_graph(recs: list[Recommendation], co_contributors: dict[str, set[str]]
         for a, b in combinations(sorted(l for l in logins if l in by_login), 2):
             add(a, b, W_CO_CONTRIBUTOR, f"both contribute to {repo}")
 
-    for a, b in combinations(sorted(by_login), 2):
-        shared_orgs = set(by_login[a].orgs) & set(by_login[b].orgs)
-        for org in sorted(shared_orgs):
+    # Index shared attributes first instead of comparing every possible pair.
+    # This keeps sparse large graphs close to O(N + E) for relationship discovery.
+    org_members: dict[str, list[str]] = {}
+    domain_members: dict[str, list[str]] = {}
+    for login, rec in by_login.items():
+        for org in set(rec.orgs):
+            org_members.setdefault(org, []).append(login)
+        for domain in set(rec.matched_domains):
+            domain_members.setdefault(domain, []).append(login)
+
+    for org, members in sorted(org_members.items()):
+        for a, b in combinations(sorted(members), 2):
             add(a, b, W_SHARED_ORG, f"both in org {org}")
-        shared_domains = set(by_login[a].matched_domains) & set(by_login[b].matched_domains)
-        if len(shared_domains) >= MIN_SHARED_DOMAINS:
-            add(a, b, W_SHARED_DOMAIN * len(shared_domains), f"{len(shared_domains)} shared domains")
+
+    shared_domain_counts: Counter[tuple[str, str]] = Counter()
+    for domain, members in sorted(domain_members.items()):
+        for a, b in combinations(sorted(members), 2):
+            shared_domain_counts[(a, b)] += 1
+    for (a, b), count in sorted(shared_domain_counts.items()):
+        if count >= MIN_SHARED_DOMAINS:
+            add(a, b, W_SHARED_DOMAIN * count, f"{count} shared domains")
 
     adjacency: dict[str, dict[str, float]] = {l: {} for l in by_login}
     for e in edges.values():

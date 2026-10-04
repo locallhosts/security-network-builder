@@ -27,6 +27,10 @@ src/snb/profile_builder.py
 src/snb/report.py
 src/snb/reputation.py
 src/snb/scoring.py
+src/snb/api/__init__.py
+src/snb/api/app.py
+src/snb/api/index.html
+tests/test_api.py
 tests/test_config.py
 tests/test_dashboard.py
 tests/test_dashboard_dom.py

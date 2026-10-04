@@ -17,9 +17,13 @@ class FakeSession(requests.Session):
         super().__init__()
         self.responses = list(responses)
         self.calls = 0
+        self.last_url = None
+        self.last_params = None
 
     def get(self, url, **kw):
         self.calls += 1
+        self.last_url = url
+        self.last_params = kw.get("params")
         return self.responses.pop(0)
 
     post = get
@@ -90,3 +94,30 @@ def test_rate_limit_and_last_headers():
     c, _ = client([Resp(200, {"resources": {"core": {"limit": 60, "remaining": 59}}}, headers={"X-OAuth-Scopes": "repo"})])
     assert c.rate_limit()["core"]["remaining"] == 59
     assert c.last_headers["X-OAuth-Scopes"] == "repo"
+
+
+def test_search_passes_page_to_github():
+    c, _ = client([Resp(200, {"items": [{"id": 1}]})])
+    assert c.search_repositories("q", per_page=10, page=3) == [{"id": 1}]
+    assert c.session.last_params["page"] == 3
+    assert c.session.last_params["per_page"] == 10
+
+
+def test_transient_server_error_retries_with_exponential_backoff():
+    c, sleeps = client([Resp(503, text="busy"), Resp(200, {"login": "alice"})])
+    assert c.get_user("alice")["login"] == "alice"
+    assert sleeps == [1]
+
+
+def test_rate_limit_reset_header_is_bounded():
+    c, _ = client([Resp(403, headers={"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "9999999999"})])
+    with pytest.raises(RateLimitError):
+        c.get_user("alice")
+
+
+def test_search_users_passes_sort_and_page():
+    c, _ = client([Resp(200, {"items": [{"login": "alice"}]})])
+    assert c.search_users("security", per_page=12, sort="repositories", page=3) == [{"login": "alice"}]
+    assert c.session.last_params["sort"] == "repositories"
+    assert c.session.last_params["page"] == 3
+    assert c.session.last_params["per_page"] == 12

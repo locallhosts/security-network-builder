@@ -21,7 +21,7 @@ from pathlib import Path
 from . import __version__
 from .config import Profile, load_env, read_profile_text
 from .discovery import discover
-from .explain import LLM, explain_all
+from .explain import LLM, OpenAILLM, explain_all
 from .github_api import GitHubClient, GitHubError, RateLimitError
 from .graph import build_graph
 from .graphql_api import BATCH_SIZE, fetch_users
@@ -44,7 +44,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--max-candidates", type=int, default=None, help="override settings.max_candidates")
     p.add_argument("--api", choices=["auto", "rest", "graphql"], default="auto", help="auto = GraphQL when a token is set")
     p.add_argument("--expand", type=int, default=0, metavar="N", help="also analyse contributors of the top N engineers' repos")
-    p.add_argument("--ai", action="store_true", help="LLM explanations (needs ANTHROPIC_API_KEY; sends public repo metadata)")
+    p.add_argument("--ai", action="store_true", help="LLM explanations via AI_PROVIDER (openai or anthropic; sends public repo metadata)")
     p.add_argument("--history-db", default=DEFAULT_DB)
     p.add_argument("--no-history", action="store_true", help="do not record this run")
     p.add_argument("--include-ignored", action="store_true", help="keep engineers you marked 'ignored'")
@@ -142,9 +142,11 @@ def run(args: argparse.Namespace) -> int:
 
     llm = None
     if args.ai:
-        llm = LLM.from_env()
+        provider = os.environ.get("AI_PROVIDER", "anthropic").lower()
+        llm = OpenAILLM.from_env() if provider == "openai" else LLM.from_env()
+        required = "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY"
         if not llm:
-            print("Warning: --ai needs ANTHROPIC_API_KEY; using offline explanations.\n")
+            print(f"Warning: --ai needs {required}; using offline explanations.\\n")
 
     profile = Profile.load(args.profile)
     client = GitHubClient(token)
@@ -219,6 +221,16 @@ def main(argv: list[str] | None = None) -> int:
         return history_cli.main(rest)
     if command == "profile-suggest":
         return profile_suggest(rest)
+    if command == "worker":
+        from .worker import run_worker
+        p = argparse.ArgumentParser(prog="snb worker")
+        p.add_argument("--jobs-db", default=os.environ.get("SNB_JOBS_DB", "data/jobs.db"))
+        p.add_argument("--max-jobs", type=int, default=1)
+        args = p.parse_args(rest)
+        results = run_worker(jobs_db=args.jobs_db, max_jobs=args.max_jobs)
+        for job in results:
+            print(f"{job.id} [{job.kind}] {job.status}")
+        return 0
     if command == "run":
         return run(parse_args(rest))
     print(f"Unknown command '{command}'. Use: run, dashboard, history, profile-suggest", file=sys.stderr)
@@ -234,7 +246,7 @@ def profile_suggest(argv: list[str]) -> int:
     p.add_argument("--github-user", required=True)
     p.add_argument("--base", default=None, help="taxonomy to start from (default: same resolution as --profile)")
     p.add_argument("--out", default="profiles/suggested_profile.yaml")
-    p.add_argument("--ai", action="store_true", help="LLM refinement (needs ANTHROPIC_API_KEY; sends your public repo metadata)")
+    p.add_argument("--ai", action="store_true", help="LLM refinement via AI_PROVIDER (sends your public repo metadata)")
     args = p.parse_args(argv)
 
     load_env()
@@ -250,12 +262,14 @@ def profile_suggest(argv: list[str]) -> int:
     base_dict = yaml.safe_load(read_profile_text(args.base))
     draft, notes = suggest_profile(args.github_user, repos, Profile.from_dict(base_dict), base_dict)
     if args.ai:
-        llm = LLM.from_env()
+        provider = os.environ.get("AI_PROVIDER", "anthropic").lower()
+        llm = OpenAILLM.from_env() if provider == "openai" else LLM.from_env()
         if llm:
             draft, note = refine_with_llm(llm, args.github_user, repos, draft)
             notes.append(note)
         else:
-            notes.append("--ai skipped: ANTHROPIC_API_KEY not set.")
+            required = "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY"
+            notes.append(f"--ai skipped: {required} not set.")
     Profile.from_dict(draft)  # never write an invalid profile
     Path(args.out).write_text(to_yaml(draft), encoding="utf-8")
     print("\n".join(f"- {n}" for n in notes))

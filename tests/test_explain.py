@@ -2,7 +2,7 @@ import json
 
 import requests
 
-from snb.explain import LLM, LLMError, explain_all, template_explanation
+from snb.explain import LLM, LLMError, OpenAILLM, explain_all, template_explanation
 from snb.models import Recommendation
 
 
@@ -67,3 +67,13 @@ def test_empty_llm_answer_is_an_error():
         assert False
     except LLMError:
         pass
+
+
+def test_openai_completion_success():
+    s = FakeSession(Resp(200, {"choices": [{"message": {"content": "A good match."}}]}))
+    llm = OpenAILLM("key", model="test-model", session=s)
+    assert llm.complete("system", "user") == "A good match."
+    url, kw = s.sent[0]
+    assert url == "https://api.openai.com/v1/chat/completions"
+    assert kw["headers"]["Authorization"] == "Bearer key"
+    assert kw["json"]["model"] == "test-model"

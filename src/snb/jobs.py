@@ -127,6 +127,19 @@ class JobQueue:
             )
         return self.get(job_id)
 
+    def stats(self) -> dict[str, int]:
+        """Return bounded operational queue counts without exposing job payloads."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT status, COUNT(*) FROM jobs GROUP BY status"
+            ).fetchall()
+        counts = {"queued": 0, "running": 0, "succeeded": 0, "failed": 0}
+        for status, count in rows:
+            if status in counts:
+                counts[status] = int(count)
+        counts["total"] = sum(counts.values())
+        return counts
+
     def run_once(self, handlers: dict[str, Callable[[dict[str, Any]], str | None]]) -> Job | None:
         job = self.claim()
         if not job:

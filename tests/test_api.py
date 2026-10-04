@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from snb.api.app import app
+from snb.models import Recommendation
 
 
 def test_home_page():
@@ -27,7 +28,7 @@ def test_interactive_docs_are_renderable_under_csp():
     assert "redoc.standalone.js" in redoc.text
 
 
-def test_public_graph_build_uses_current_search(monkeypatch, tmp_path):
+def test_public_graph_build_rejects_empty_analysis_with_actionable_error(monkeypatch, tmp_path):
     monkeypatch.setenv("SNB_HISTORY_DB", str(tmp_path / "history.db"))
     monkeypatch.setattr(
         "snb.api.app.GitHubClient.search_repositories",
@@ -38,13 +39,63 @@ def test_public_graph_build_uses_current_search(monkeypatch, tmp_path):
     )
     monkeypatch.setattr("snb.api.app.analyse", lambda *args, **kwargs: [])
     response = TestClient(app).post("/api/public/graph/build", json={"query": "runtime security"})
-    assert response.status_code == 200
-    data = response.json()
-    assert data["source"] == "github-search"
-    assert data["query"] == "runtime security"
-    assert data["candidates"] == 2
-    assert data["engineers"] == 0
-    assert data["graph"]["nodes"] == []
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["error"] == "no_engineers_matched"
+    assert detail["candidates"] == 2
+    assert "broader query" in detail["message"]
+
+
+def test_public_graph_build_persists_and_reloads_current_snapshot(monkeypatch, tmp_path):
+    db = str(tmp_path / "history.db")
+    monkeypatch.setenv("SNB_HISTORY_DB", db)
+    search_items = [
+        {"full_name": "acme/runtime-security", "description": "runtime security", "stargazers_count": 25, "language": "Go", "owner": {"login": "alice", "type": "User", "html_url": "https://github.com/alice"}},
+        {"full_name": "acme/ebpf-tool", "description": "eBPF security", "stargazers_count": 20, "language": "Go", "owner": {"login": "bob", "type": "User", "html_url": "https://github.com/bob"}},
+    ]
+    monkeypatch.setattr("snb.api.app.GitHubClient.search_repositories", lambda self, query, per_page=30, page=1, sort="stars": search_items)
+    monkeypatch.setattr("snb.api.app.enrich_rest", lambda *args, **kwargs: None)
+
+    def fake_analyse(client, ranked, profile, api, min_score):
+        return [
+            Recommendation(login=login, url=f"https://github.com/{login}", score=score, matched_domains=["eBPF", "Cloud Security"], breakdown={}, evidence=[], matched_repos=[], orgs=["AcmeSec"])
+            for login, score in (("alice", 30.0), ("bob", 20.0))
+        ]
+
+    monkeypatch.setattr("snb.api.app.analyse", fake_analyse)
+    client = TestClient(app)
+
+    first = client.post("/api/public/graph/build", json={"query": "runtime security"})
+    assert first.status_code == 200
+    first_data = first.json()
+    assert first_data["run_id"] == 1
+    assert first_data["engineers"] == 2
+    assert [node["login"] for node in first_data["graph"]["nodes"]] == ["alice", "bob"]
+    assert len(first_data["graph"]["edges"]) == 1
+
+    loaded = client.get("/api/graph")
+    assert loaded.status_code == 200
+    assert loaded.json()["generated_at"] is None
+    assert [node["login"] for node in loaded.json()["nodes"]] == ["alice", "bob"]
+    assert loaded.json()["edges"] == first_data["graph"]["edges"]
+
+    search_items[:] = [
+        {"full_name": "acme/cloud", "description": "cloud security", "stargazers_count": 40, "language": "Python", "owner": {"login": "carol", "type": "User", "html_url": "https://github.com/carol"}},
+    ]
+    monkeypatch.setattr(
+        "snb.api.app.analyse",
+        lambda client, ranked, profile, api, min_score: [
+            Recommendation(login="carol", url="https://github.com/carol", score=45.0, matched_domains=["Cloud Security"], breakdown={}, evidence=[], matched_repos=[])
+        ],
+    )
+    second = client.post("/api/public/graph/build", json={"query": "cloud security"})
+    assert second.status_code == 200
+    second_data = second.json()
+    assert second_data["run_id"] == 2
+    assert [node["login"] for node in second_data["graph"]["nodes"]] == ["carol"]
+
+    reloaded = client.get("/api/graph")
+    assert [node["login"] for node in reloaded.json()["nodes"]] == ["carol"]
 
 
 def test_protected_endpoint_requires_key(monkeypatch):
@@ -292,6 +343,9 @@ def test_public_web_ui_exposes_secure_search_controls():
     assert 'id="zoom-in"' in response.text
     assert 'id="zoom-out"' in response.text
     assert "drag empty space to pan" in response.text
+    assert 'archivedValue===""?null:archivedValue==="true"' in response.text
+    assert 'forkValue===""?null:forkValue==="true"' in response.text
+    assert "apiErrorMessage" in response.text
 
 
 def test_public_engineer_profile_is_sanitized_and_public(monkeypatch):

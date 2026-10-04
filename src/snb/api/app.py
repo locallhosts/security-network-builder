@@ -298,9 +298,52 @@ class _JsonFormatter(logging.Formatter):
 log = logging.getLogger("snb.api")
 
 
-_SEARCH_WINDOW = 60.0
-_SEARCH_LIMIT = 30
-_search_hits: dict[str, deque[float]] = defaultdict(deque)
+_PUBLIC_RATE_LIMITER = SlidingWindowLimiter(max_clients=5000)
+_PUBLIC_RATE_LIMITS: dict[str, tuple[int, float]] = {
+    "search": (30, 60.0),
+    "users_search": (30, 60.0),
+    "profile": (60, 60.0),
+    "compare": (20, 60.0),
+    "relationships": (30, 60.0),
+    "graph": (20, 60.0),
+    "usage": (10, 60.0),
+}
+_PUBLIC_PATHS = {"/api/search", "/api/users/search", "/api/graph", "/api/usage"}
+_PRIVATE_BODY_LIMIT = 1_048_576
+_PUBLIC_BODY_LIMIT = 32_768
+
+
+def _env_limit(name: str, default: tuple[int, float]) -> tuple[int, float]:
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        value = max(1, int(raw))
+    except ValueError:
+        return default
+    return value, default[1]
+
+
+def _public_client_key(request: Request, endpoint: str) -> str:
+    host = request.client.host if request.client else "unknown"
+    return f"{host}:{endpoint}"
+
+
+def _check_public_rate(request: Request, endpoint: str, response: Response | None = None) -> None:
+    limit, window = _env_limit(f"SNB_RATE_LIMIT_{endpoint.upper()}", _PUBLIC_RATE_LIMITS[endpoint])
+    decision = _PUBLIC_RATE_LIMITER.check(_public_client_key(request, endpoint), limit=limit, window=window)
+    request.state.rate_limit = decision
+    if response is not None:
+        response.headers["X-RateLimit-Limit"] = str(decision.limit)
+        response.headers["X-RateLimit-Remaining"] = str(decision.remaining)
+        response.headers["X-RateLimit-Reset"] = str(decision.reset_after)
+    if not decision.allowed:
+        _METRICS["rate_limited"] += 1
+        raise HTTPException(
+            status_code=429,
+            detail={"error": "rate_limit_exceeded", "message": "too many requests", "retry_after": decision.retry_after},
+            headers={"Retry-After": str(decision.retry_after)},
+        )
 
 
 def get_history() -> History:

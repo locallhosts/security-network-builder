@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 
 from fastapi import Body, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -28,6 +29,7 @@ from ..jobs import JobQueue
 from ..readiness import readiness
 from ..workspace import WorkspaceStore
 from ..scoring import score_candidate
+from ..rate_limit import SlidingWindowLimiter
 
 app = FastAPI(
     title="Security Network Builder API",

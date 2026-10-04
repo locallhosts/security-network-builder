@@ -10,8 +10,6 @@ from typing import Any
 
 from .taxonomy import classify_repository
 
-_MAX_AGE_DAYS = 3650
-
 
 def _days_since(value: str | None, now: datetime) -> int | None:
     if not value:
@@ -89,5 +87,4 @@ def assess_repository(repo: dict[str, Any], *, now: datetime | None = None) -> d
             "Heuristic metadata assessment only; it is not a vulnerability scan.",
             "Missing GitHub metadata is treated as unknown.",
         ],
-    },
-}
+    }

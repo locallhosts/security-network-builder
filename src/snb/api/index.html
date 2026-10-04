@@ -124,7 +124,25 @@ function githubLink(url,label="GitHub"){if(typeof url!=="string"||!/^https:\/\/(
 function setStatus(msg,type=""){const n=$("#status");n.textContent=msg;n.className="status"+(type?" "+type:"")}
 function setGraphStatus(msg){$("#graph-status").textContent=msg}
 function download(name,content,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
-function markdownSearch(){const stamp=new Date().toISOString();const title=state.mode==="repos"?"Repository search":"Engineer search";let out="# "+title+"\n\n- Query: "+state.query+"\n- Page: "+state.page+"\n- Source: GitHub public API\n- Exported: "+stamp+"\n- Schema: 1\n\n";if(state.mode==="repos"){out+="| Repository | Owner | Stars | Language | URL |\n|---|---|---:|---|---|\n";state.results.forEach(x=>{out+="| "+String(x.repository||"").replaceAll("|","\\|")+" | "+String(x.owner||"")+" | "+Number(x.stars||0)+" | "+String(x.language||"")+" | "+String(x.url||"")+" |\n"})}else{out+="| Engineer | Followers | Public repos | URL |\n|---|---:|---:|---|\n";state.results.forEach(x=>{out+="| @"+x.login+" | "+Number(x.followers||0)+" | "+Number(x.public_repos||0)+" | "+String(x.url||"")+" |\n"})}return out}\nfunction csv(rows){if(!rows.length)return "";const cols=Object.keys(rows[0]);const esc=v=>'"'+String(v??"").replaceAll('"','""')+'"';return [cols.map(esc).join(","),...rows.map(r=>cols.map(k=>esc(r[k])).join(","))].join("\n")}
+function markdownSearch(){
+ const stamp=new Date().toISOString();
+ const title=state.mode==="repos"?"Repository search":"Engineer search";
+ const lines=["# "+title,"","- Query: "+state.query,"- Page: "+state.page,"- Source: GitHub public API","- Exported: "+stamp,"- Schema: 1",""];
+ if(state.mode==="repos"){
+  lines.push("| Repository | Owner | Stars | Language | URL |","|---|---|---:|---|---|");
+  state.results.forEach(x=>lines.push("| "+String(x.repository||"").replaceAll("|","\\\\|")+" | "+String(x.owner||"")+" | "+Number(x.stars||0)+" | "+String(x.language||"")+" | "+String(x.url||"")+" |"));
+ }else{
+  lines.push("| Engineer | Followers | Public repos | URL |","|---|---:|---:|---|");
+  state.results.forEach(x=>lines.push("| @"+x.login+" | "+Number(x.followers||0)+" | "+Number(x.public_repos||0)+" | "+String(x.url||"")+" |"));
+ }
+ return lines.join("\\n");
+}
+function csv(rows){
+ if(!rows.length)return "";
+ const cols=Object.keys(rows[0]);
+ const esc=v=>'"'+String(v??"").replaceAll('"','""')+'"';
+ return [cols.map(esc).join(","),...rows.map(r=>cols.map(k=>esc(r[k])).join(","))].join("\\n");
+}
 function apiUrl(path,params){const u=new URL(path,location.origin);Object.entries(params).forEach(([k,v])=>{if(v!==""&&v!==null&&v!==undefined)u.searchParams.set(k,v)});return u}
 async function getJson(url){const r=await fetch(url,{headers:{Accept:"application/json"}});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.detail||"Request failed");return d}
 

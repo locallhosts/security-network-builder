@@ -325,9 +325,9 @@ function applyGraphSnapshot(data){
 function apiErrorMessage(detail,fallback="Request failed"){if(typeof detail==="string"&&detail.trim())return detail;if(Array.isArray(detail)){const messages=detail.map(item=>{if(typeof item==="string")return item;if(item&&typeof item==="object"){const loc=Array.isArray(item.loc)?item.loc.filter(Boolean).join(" → "):"";const msg=typeof item.msg==="string"?item.msg:"Validation error";return loc?loc+": "+msg:msg}return String(item)}).filter(Boolean);if(messages.length)return messages.join("; ")}if(detail&&typeof detail==="object"){if(typeof detail.message==="string")return detail.message;if(typeof detail.error==="string")return detail.error}return fallback}
 
 async function loadGraph(){
- try{const d=await getJson("/api/graph");applyGraphSnapshot(d)}catch(e){setGraphStatus(e.message)}
+ try{const d=await getJson("/api/graph");applyGraphSnapshot(d);return true}catch(e){setGraphStatus(e.message);return false}
 }
-$("#refresh-graph").addEventListener("click",async()=>{const b=$("#refresh-graph");b.disabled=true;b.textContent="Refreshing…";setGraphStatus("Reloading the latest persisted intelligence snapshot…");try{await loadGraph();setGraphStatus("Latest persisted intelligence snapshot loaded.");}finally{b.disabled=false;b.textContent="Refresh intelligence"}});
+$("#refresh-graph").addEventListener("click",async()=>{const b=$("#refresh-graph");b.disabled=true;b.textContent="Refreshing…";setGraphStatus("Reloading the latest persisted intelligence snapshot…");try{const ok=await loadGraph();if(ok)setGraphStatus("Latest persisted intelligence snapshot loaded.");}finally{b.disabled=false;b.textContent="Refresh intelligence"}});
 const initialEngineer=new URLSearchParams(location.search).get("engineer");if(initialEngineer)loadEngineer(initialEngineer);
 loadUsage();loadGraph();
 </script>

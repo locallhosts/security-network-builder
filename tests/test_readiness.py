@@ -12,13 +12,19 @@ def test_readiness_fails_closed_without_production_auth(monkeypatch, tmp_path):
     assert response.json()["checks"]["authentication"] == "error"
 
 
-def test_readiness_is_ok_with_production_auth(monkeypatch, tmp_path):
+def test_readiness_accepts_production_auth_but_requires_postgresql(monkeypatch, tmp_path):
     monkeypatch.setenv("SNB_HISTORY_DB", str(tmp_path / "history.db"))
     monkeypatch.setenv("SNB_ENV", "production")
     monkeypatch.setenv("API_KEYS", "one,two")
     monkeypatch.setenv("SNB_ALLOWED_HOSTS", "example.com")
+    monkeypatch.delenv("SNB_DATABASE_URL", raising=False)
+
     response = TestClient(app).get("/api/readiness")
-    assert response.json()["status"] == "ok"
+    body = response.json()
+
+    assert body["status"] == "degraded"
+    assert body["checks"]["authentication"] == "ok"
+    assert body["checks"]["durable_database"] == "error"
 
 
 def test_readiness_rejects_remote_ai_without_secret(monkeypatch, tmp_path):

@@ -789,3 +789,20 @@ I built this project to explore how security engineering communities can be disc
 ## License
 
 Released under the [MIT License](LICENSE).
+### Production API protection
+
+The public FastAPI boundary includes bounded, process-local abuse controls in addition to GitHub upstream throttling:
+
+- endpoint-specific sliding-window limits for repository/user search, profiles, comparison, relationships, graph, and usage
+- `429 Too Many Requests` responses with `Retry-After` and `X-RateLimit-*` headers
+- bounded client state to prevent unbounded memory growth from hostile client identifiers
+- request body limits (32 KiB for public request paths and 1 MiB for private API requests)
+- bounded search parameters and pagination enforced by FastAPI validation
+- sanitized upstream GitHub errors so provider details are not exposed to callers
+- correlation IDs and request-duration logging
+- public/private CORS is disabled by default and can be explicitly allow-listed with `SNB_CORS_ORIGINS`
+- rate-limit and upstream-failure counters are exposed through `/api/metrics`
+
+Rate limits are intentionally process-local. A horizontally scaled deployment should also enforce a shared edge/WAF/API-gateway limit before the application.
+
+Supported endpoint overrides use requests per minute, for example `SNB_RATE_LIMIT_SEARCH=20` or `SNB_RATE_LIMIT_GRAPH=10`. Invalid values fall back to safe defaults.

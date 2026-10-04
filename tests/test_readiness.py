@@ -16,5 +16,6 @@ def test_readiness_is_ok_with_production_auth(monkeypatch, tmp_path):
     monkeypatch.setenv("SNB_HISTORY_DB", str(tmp_path / "history.db"))
     monkeypatch.setenv("SNB_ENV", "production")
     monkeypatch.setenv("API_KEYS", "one,two")
+    monkeypatch.setenv("SNB_ALLOWED_HOSTS", "example.com")
     response = TestClient(app).get("/api/readiness")
     assert response.json()["status"] == "ok"

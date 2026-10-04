@@ -277,11 +277,13 @@ Every feature must satisfy these rules:
 **Production rule:** deployment is the final gate. We will not deploy while a required product, security, or operational acceptance criterion is unchecked.
 
 ### Phase 6 — Advanced intelligence and ecosystem
-**Status: PLANNED**
+**Status: IN PROGRESS**
 
-- [ ] Scheduled discovery runs
-- [ ] Change detection and alerts
-- [ ] Watchlists
+- [x] Scheduled discovery metadata and local watchlists
+- [x] Deterministic change detection and alerts between discovery runs
+- [x] Watchlist enable/disable and due-run scheduling controls
+- [ ] Execute scheduled watchlists through the durable worker
+- [ ] Persist alert delivery state and user-selectable alert channels
 - [ ] Saved investigations
 - [ ] Compare searches over time
 - [ ] Multi-profile comparison
@@ -295,6 +297,8 @@ Every feature must satisfy these rules:
 - [ ] API SDK/client examples
 - [ ] PyPI release
 - [ ] Contributor/developer documentation
+
+Phase 6 deliberately starts with deterministic, local-first scheduling and change intelligence. No external notification channel or automatic outreach is enabled.
 
 ### Completion rule
 
@@ -432,6 +436,20 @@ snb
 ---
 
 ## Usage
+
+### Watchlists and change alerts
+
+Watchlists are local, bounded public-data schedules. They do not store GitHub credentials and do not contact people.
+
+    snb watchlist create "Cloud security" "cloud security" --domain cloud --interval-minutes 1440
+    snb watchlist list
+    snb watchlist due
+    snb watchlist enable WATCHLIST_ID
+    snb watchlist disable WATCHLIST_ID
+    snb alerts
+    snb alerts --min-move 5
+
+`alerts` compares the latest persisted discovery run with the previous run and reports new engineers, dropped engineers, and material score changes. Scheduled watchlists currently expose due-run metadata; execution through the durable worker is the next Phase 6 slice.
 
 ### Discovery runs
 

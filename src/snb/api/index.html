@@ -244,7 +244,7 @@ function layout(nodes,edges){
 }
 function drawGraph(){
  const svg=$("#graph-svg");clear(svg);const {nodes,edges}=graphFiltered();selectedNode=null;$("#edge-details").textContent="Select a node to inspect its relationships.";clear($("#graph-fallback"));
- if(!nodes.length){svg.appendChild(elNS("text",{x:30,y:45,fill:"#617087"},"No nodes match the current filters."));setGraphStatus("No matching nodes");return}
+ if(!nodes.length){const message=(graphState.nodes||[]).length?"No nodes match the current filters.":"No graph snapshot is available yet. Run an SNB analysis and persist its history database, then refresh this page.";svg.appendChild(elNS("text",{x:30,y:45,fill:"#617087"},message));setGraphStatus((graphState.nodes||[]).length?"No matching nodes":"No saved graph snapshot");return}
  const display=nodes.length>140?nodes.slice(0,140):nodes;const allowed=new Set(display.map(n=>n.login));const displayEdges=edges.filter(e=>allowed.has(e.a)&&allowed.has(e.b));const pos=layout(display,displayEdges);const ns="http://www.w3.org/2000/svg";
  const root=document.createElementNS(ns,"g");root.setAttribute("transform",`translate(${view.tx} ${view.ty}) scale(${view.scale})`);svg.appendChild(root);
  displayEdges.forEach(e=>{const a=pos[e.a],b=pos[e.b],line=document.createElementNS(ns,"line");line.setAttribute("x1",a.x);line.setAttribute("y1",a.y);line.setAttribute("x2",b.x);line.setAttribute("y2",b.y);line.setAttribute("stroke-width",String(Math.max(1,Math.min(8,Number(e.weight)||1))));line.setAttribute("class","edge"+(pathState.some(p=>((p[0]===e.a&&p[1]===e.b)||(p[0]===e.b&&p[1]===e.a)))?" strong":""));line.dataset.a=e.a;line.dataset.b=e.b;root.appendChild(line)});

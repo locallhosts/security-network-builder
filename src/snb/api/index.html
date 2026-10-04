@@ -98,7 +98,7 @@ footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
 <div id="workspace-view" class="profile" hidden></div>
 </section>
 <section class="panel" id="graph">
-<div class="panel-head"><div><h2>Security community network</h2><div class="muted">Explore relationship strength, communities, centrality and individual engineers.</div></div><div class="actions"><button class="btn" id="download-svg" type="button">Download SVG</button><button class="btn" id="download-graph" type="button">Download graph JSON</button><button class="btn" id="download-graph-md" type="button">Graph report</button></div></div>
+<div class="panel-head"><div><h2>Security community network</h2><div class="muted">Explore relationship strength, communities, centrality and individual engineers.</div></div><div class="actions"><button class="btn primary" id="build-graph" type="button">Build graph from search</button><button class="btn" id="download-svg" type="button">Download SVG</button><button class="btn" id="download-graph" type="button">Download graph JSON</button><button class="btn" id="download-graph-md" type="button">Graph report</button></div></div>
 <div class="graph-tools">
 <label class="field">Community<select id="community"><option value="">All communities</option></select></label>
 <label class="field">Min centrality<input id="centrality" type="number" min="0" max="1" step=".05" value="0"></label>
@@ -309,8 +309,31 @@ $("#download-graph").addEventListener("click",()=>download("security-network-gra
 $("#download-svg").addEventListener("click",()=>{const clone=$("#graph-svg").cloneNode(true);clone.setAttribute("xmlns","http://www.w3.org/2000/svg");download("security-network-graph.svg",new XMLSerializer().serializeToString(clone),"image/svg+xml")});
 
 async function loadUsage(){try{const d=await getJson("/api/usage");const r=d.search||{};const left=r.remaining!==undefined?r.remaining:"—";const limit=r.limit!==undefined?r.limit:"—";$("#rate-status").textContent="GitHub Search API · "+left+" / "+limit+" remaining";}catch(e){$("#rate-status").textContent="GitHub capacity unavailable · retry if searches fail";}}
+function applyGraphSnapshot(data){
+ graphState=data||{nodes:[],edges:[],communities:[]};
+ const c=$("#community");clear(c);c.appendChild(el("option",{value:""},"All communities"));
+ (graphState.communities||[]).forEach(x=>c.appendChild(el("option",{value:String(x.id)},"Community "+x.id+" · "+x.size+" members")));
+ $("#metric-nodes").textContent=(graphState.nodes||[]).length;
+ $("#metric-edges").textContent=(graphState.edges||[]).length;
+ $("#metric-communities").textContent=(graphState.communities||[]).length;
+ const cs=$("#community-summary");clear(cs);(graphState.communities||[]).forEach(c=>cs.appendChild(el("div",{class:"meta"},"Community "+c.id+" · "+c.size+" members · "+(c.top_domain||"mixed"))));
+ const rank=$("#centrality-ranking");clear(rank);[...(graphState.nodes||[])].sort((a,b)=>Number(b.centrality)-Number(a.centrality)).slice(0,15).forEach(n=>rank.appendChild(el("li",{},el("button",{class:"btn",onclick:()=>showNode(n.login)},"@"+n.login)," · "+Number(n.centrality).toFixed(2))));
+ drawGraph();
+}
+async function buildGraphFromSearch(){
+ if(state.mode!=="repos"||!state.query){setGraphStatus("Run a repository search first.");return}
+ const button=$("#build-graph");button.disabled=true;button.textContent="Building…";setGraphStatus("Building graph from the current GitHub search…");
+ const payload={query:state.query,limit:state.limit,top:15,sort:state.sort,language:$("#language").value,min_stars:Number($("#min-stars").value||0),owner:$("#owner").value.trim()||null,topic:$("#topic").value.trim()||null,archived:$("#archived").value,fork:$("#fork").value};
+ try{
+  const r=await fetch("/api/public/graph/build",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});let d={};try{d=await r.json()}catch{}
+  if(!r.ok)throw new Error(d.detail||"Graph build failed");
+  applyGraphSnapshot(d.graph||{});
+  setGraphStatus("Graph built from “"+state.query+"” · "+d.engineers+" engineers · "+(d.graph?.edges||[]).length+" relationships · run "+(d.run_id??"not persisted"));
+ }catch(e){setGraphStatus(e.message)}finally{button.disabled=false;button.textContent="Build graph from search"}
+}
+$("#build-graph").addEventListener("click",buildGraphFromSearch);
 async function loadGraph(){
- try{graphState=await getJson("/api/graph");const c=$("#community");clear(c);c.appendChild(el("option",{value:""},"All communities"));(graphState.communities||[]).forEach(x=>c.appendChild(el("option",{value:String(x.id)},"Community "+x.id+" · "+x.size+" members")));$("#metric-nodes").textContent=(graphState.nodes||[]).length;$("#metric-edges").textContent=(graphState.edges||[]).length;$("#metric-communities").textContent=(graphState.communities||[]).length;const cs=$("#community-summary");clear(cs);(graphState.communities||[]).forEach(c=>cs.appendChild(el("div",{class:"meta"},"Community "+c.id+" · "+c.size+" members · "+(c.top_domain||"mixed"))));const rank=$("#centrality-ranking");clear(rank);[...(graphState.nodes||[])].sort((a,b)=>Number(b.centrality)-Number(a.centrality)).slice(0,15).forEach(n=>rank.appendChild(el("li",{},el("button",{class:"btn",onclick:()=>showNode(n.login)},"@"+n.login)," · "+Number(n.centrality).toFixed(2))));drawGraph()}catch(e){setGraphStatus(e.message)}
+ try{const d=await getJson("/api/graph");applyGraphSnapshot(d)}catch(e){setGraphStatus(e.message)}
 }
 const initialEngineer=new URLSearchParams(location.search).get("engineer");if(initialEngineer)loadEngineer(initialEngineer);
 loadUsage();loadGraph();

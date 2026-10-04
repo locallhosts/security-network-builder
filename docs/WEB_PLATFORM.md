@@ -78,3 +78,7 @@ The public API exposes:
 - freshness timestamps
 - retry behavior for upstream failures
 - safe public-data cache headers
+
+## Production security controls
+
+The public platform now applies endpoint-specific, bounded in-process rate limiting with `429`/retry semantics, request-size guards, sanitized upstream errors, correlation IDs, CORS allow-listing, and security metrics. Search and pagination inputs remain server-bounded. These controls are application-layer protection; a hosted multi-instance deployment should add a shared edge/WAF rate limit as well.

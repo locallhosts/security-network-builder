@@ -520,6 +520,16 @@ def enqueue_job(
                        max_attempts=job.max_attempts, last_error=job.last_error, result=job.result)
 
 
+@app.get("/api/worker/status", tags=["private"])
+def worker_status(x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    """Return queue health without exposing job payloads or private results."""
+    require_api_key(x_api_key)
+    try:
+        stats = get_jobs().stats()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="worker queue unavailable") from exc
+    return {"status": "ok", "queue": stats, "provider": os.environ.get("AI_PROVIDER", "offline").strip().lower()}
+
 @app.get("/api/jobs/{job_id}", response_model=JobResponse, tags=["private"])
 def job_status(job_id: str, x_api_key: str | None = Header(default=None)) -> JobResponse:
     require_api_key(x_api_key)

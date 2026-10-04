@@ -50,12 +50,9 @@ def assess_repository(repo: dict[str, Any], *, now: datetime | None = None) -> d
     elif age > 730:
         score -= 25
         signals.append({"id": "stale", "severity": "high", "detail": f"No push activity for {age} days."})
-    elif age > 365:
-        score -= 15
-        signals.append({"id": "aging", "severity": "medium", "detail": f"No push activity for {age} days."})
     elif age > 90:
-        score -= 5
-        signals.append({"id": "quiet", "severity": "low", "detail": f"No push activity for {age} days."})
+        score -= 10
+        signals.append({"id": "aging", "severity": "medium", "detail": f"No push activity for {age} days."})
     else:
         signals.append({"id": "active", "severity": "positive", "detail": f"Updated within {age} days."})
 
@@ -92,4 +89,5 @@ def assess_repository(repo: dict[str, Any], *, now: datetime | None = None) -> d
             "Heuristic metadata assessment only; it is not a vulnerability scan.",
             "Missing GitHub metadata is treated as unknown.",
         ],
-    }
+    },
+}

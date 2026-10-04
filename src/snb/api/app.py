@@ -71,6 +71,9 @@ def load_settings() -> APISettings:
 
 
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(load_settings().allowed_hosts))
+_cors_origins = tuple(o.strip() for o in os.environ.get("SNB_CORS_ORIGINS", "").split(",") if o.strip())
+if _cors_origins:
+    app.add_middleware(CORSMiddleware, allow_origins=list(_cors_origins), allow_credentials=False, allow_methods=["GET", "HEAD", "OPTIONS"], allow_headers=["Accept", "Content-Type", "X-Request-ID", "X-API-Key"], max_age=600)
 
 
 class HealthResponse(BaseModel):
@@ -343,6 +346,20 @@ def _check_search_rate(request: Request) -> None:
 
 
 @app.middleware("http")
+async def request_size_guard(request: Request, call_next: Any) -> Any:
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            declared = int(content_length)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="invalid content length")
+        limit = _PUBLIC_BODY_LIMIT if request.url.path in _PUBLIC_PATHS else _PRIVATE_BODY_LIMIT
+        if declared > limit:
+            raise HTTPException(status_code=413, detail="request body too large")
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def security_headers(request: Request, call_next: Any) -> Any:
     correlation_id = request.headers.get("X-Request-ID") or secrets.token_hex(12)
     request.state.correlation_id = correlation_id
@@ -365,6 +382,11 @@ async def security_headers(request: Request, call_next: Any) -> Any:
         "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
         "connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
     )
+    if hasattr(request.state, "rate_limit"):
+        decision = request.state.rate_limit
+        response.headers.setdefault("X-RateLimit-Limit", str(decision.limit))
+        response.headers.setdefault("X-RateLimit-Remaining", str(decision.remaining))
+        response.headers.setdefault("X-RateLimit-Reset", str(decision.reset_after))
     if request.url.path.startswith("/api/"):
         public_cache = request.url.path in {"/api/search", "/api/users/search", "/api/public/engineers/compare", "/api/graph"}
         response.headers.setdefault("Cache-Control", "public, max-age=30, stale-while-revalidate=60" if public_cache else "no-store")
@@ -402,7 +424,7 @@ def search(
     fork: bool | None = Query(default=None),
 ) -> SearchResponse:
     """Search public GitHub repositories. No private API key is exposed to browsers."""
-    _check_search_rate(request)
+    _check_public_rate(request, "search", response)
     _METRICS["searches"] += 1
     client = GitHubClient(load_settings().github_token)
     search_query = q.strip()
@@ -421,7 +443,7 @@ def search(
     try:
         items = client.search_repositories(search_query, per_page=limit, page=page, sort=sort)
     except GitHubError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=502, detail="upstream GitHub service unavailable") from exc
     results = []
     seen: set[str] = set()
     for item in items:
@@ -559,6 +581,7 @@ def engineer_analysis(login: str, x_api_key: str | None = Header(default=None)) 
 @app.get("/api/users/search", response_model=UserSearchResponse, tags=["public"])
 def search_users(
     request: Request,
+    response: Response,
     q: str = Query(..., min_length=2, max_length=100),
     limit: int = Query(10, ge=1, le=30),
     page: int = Query(1, ge=1, le=34),
@@ -593,7 +616,7 @@ def search_users(
 
 
 @app.get("/api/public/engineers/{login}", response_model=PublicEngineerProfile, tags=["public"])
-def public_engineer(request: Request, login: str) -> PublicEngineerProfile:
+def public_engineer(request: Request, response: Response, login: str) -> PublicEngineerProfile:
     """Return a sanitized public GitHub engineer profile."""
     _check_search_rate(request)
     _METRICS["profiles"] += 1
@@ -676,16 +699,6 @@ def usage(request: Request, response: Response) -> dict[str, Any]:
     return {"source": "github", "core": resources.get("core") or {}, "search": resources.get("search") or {}, "generated_at": datetime.now(timezone.utc).isoformat()}
 
 
-@app.get("/api/usage", tags=["public"])
-def usage(request: Request, response: Response) -> dict[str, Any]:
-    _check_search_rate(request)
-    client = GitHubClient(load_settings().github_token)
-    try:
-        resources = client.rate_limit()
-    except GitHubError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    response.headers["X-Data-Source"] = "github"
-    return {"source": "github", "core": resources.get("core") or {}, "search": resources.get("search") or {}, "generated_at": datetime.now(timezone.utc).isoformat()}
 
 
 @app.get("/api/workspaces", tags=["private"])
@@ -782,7 +795,7 @@ def compare_engineers(
     first: str = Query(..., min_length=1, max_length=39, pattern="^[A-Za-z0-9-]+$"),
     second: str = Query(..., min_length=1, max_length=39, pattern="^[A-Za-z0-9-]+$"),
 ) -> dict[str, Any]:
-    _check_search_rate(request)
+    _check_public_rate(request, "compare", response)
     if first.lower() == second.lower():
         raise HTTPException(status_code=422, detail="compare two different engineers")
     client = GitHubClient(load_settings().github_token)

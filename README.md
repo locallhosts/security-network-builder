@@ -235,11 +235,11 @@ Every feature must satisfy these rules:
 - [x] Retry/idempotency controls
 - [x] Job status API
 - [x] Resource/rate-limit controls
-- [ ] Verify every public web intelligence feature has a deterministic non-AI path
-- [ ] Optional AI explanations in the investigation workspace
-- [ ] AI provenance indicator showing when text is AI-generated
-- [ ] AI request audit metadata without storing secrets
-- [ ] AI output regression tests against prompt-injection-shaped GitHub content
+- [x] Verify every public web intelligence feature has a deterministic non-AI path
+- [x] Optional AI explanations in the investigation workspace
+- [x] AI provenance indicator showing when text is AI-generated
+- [x] AI request audit metadata without storing secrets
+- [x] AI output regression tests against prompt-injection-shaped GitHub content
 
 **AI contract:** offline remains the default. A remote provider is used only when explicitly configured and supplied with its required secret. No public visitor can silently cause an LLM request.
 

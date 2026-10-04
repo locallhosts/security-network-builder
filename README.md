@@ -282,9 +282,10 @@ Every feature must satisfy these rules:
 - [x] Scheduled discovery metadata and local watchlists
 - [x] Deterministic change detection and alerts between discovery runs
 - [x] Watchlist enable/disable and due-run scheduling controls
+- [x] Protected watchlist and alert API endpoints
 - [ ] Execute scheduled watchlists through the durable worker
 - [ ] Persist alert delivery state and user-selectable alert channels
-- [ ] Saved investigations
+- [x] Saved investigations (persistent private workspaces)
 - [ ] Compare searches over time
 - [ ] Multi-profile comparison
 - [ ] Organization intelligence

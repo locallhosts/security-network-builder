@@ -157,11 +157,14 @@ class SearchHistoryStore:
         added = [new[k][1] | {"rank": new[k][0] + 1} for k in sorted(new.keys() - old.keys())]
         removed = [old[k][1] | {"rank": old[k][0] + 1} for k in sorted(old.keys() - new.keys())]
         changed: list[dict[str, Any]] = []
-        for key in sorted(old.keys() & new.keys()):
+        common = sorted(old.keys() & new.keys(), key=lambda k: (old[k][0], k))
+        common_old_rank = {k: i for i, k in enumerate(common)}
+        common_new_rank = {k: i for i, k in enumerate(sorted(common, key=lambda k: (new[k][0], k)))}
+        for key in common:
             old_rank, old_item = old[key]
             new_rank, new_item = new[key]
             delta = int(new_item["stars"]) - int(old_item["stars"])
-            rank_delta = old_rank - new_rank
+            rank_delta = common_old_rank[key] - common_new_rank[key]
             if delta or rank_delta:
                 changed.append({
                     "repository": new_item["full_name"] or new_item["name"],

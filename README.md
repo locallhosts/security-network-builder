@@ -196,7 +196,7 @@ Every feature must satisfy these rules:
 - [x] JSON
 - [x] SVG
 - [x] Human-readable Markdown
-- [ ] Optional PDF report generated locally/server-side (deferred until report dependency is intentionally added)
+- [x] Optional PDF report generated locally/server-side (install the optional pdf extra)
 - [x] Export metadata: query, timestamp, source, filters, schema version
 - [x] No secrets or private notes in public exports
 
@@ -283,21 +283,22 @@ Every feature must satisfy these rules:
 - [x] Deterministic change detection and alerts between discovery runs
 - [x] Watchlist enable/disable and due-run scheduling controls
 - [x] Protected watchlist and alert API endpoints
-- [ ] Execute scheduled watchlists through the durable worker
-- [ ] Persist alert delivery state and user-selectable alert channels
-- [x] Saved investigations (persistent private workspaces)
-- [ ] Compare searches over time
-- [ ] Multi-profile comparison
-- [ ] Organization intelligence
-- [ ] Repository health intelligence
-- [ ] Security technology/skill taxonomy
-- [ ] Public graph snapshots and versioning
-- [ ] Standard graph formats: GraphML, GEXF, edge list
-- [ ] Optional integrations with other public data sources
-- [ ] Public API versioning
-- [ ] API SDK/client examples
-- [ ] PyPI release
-- [ ] Contributor/developer documentation
+- [x] Execute scheduled watchlists through the durable worker
+- [x] Persist alert acknowledgement/delivery state locally
+- [ ] Add user-selectable external alert channels (explicitly disabled until implemented)
+- [x] Saved investigations
+- [x] Compare searches over time
+- [x] Multi-profile comparison
+- [x] Organization intelligence
+- [x] Repository health intelligence
+- [x] Security technology/skill taxonomy
+- [x] Public graph snapshots and versioning
+- [x] Standard graph formats: GraphML, GEXF, edge list
+- [x] Optional integrations with other public data sources (CISA KEV)
+- [x] Public API versioning (/api/v1 with legacy aliases)
+- [x] API SDK/client examples
+- [x] PyPI release tooling and artifact verification (publication requires explicit release action)
+- [x] Contributor/developer documentation
 
 Phase 6 deliberately starts with deterministic, local-first scheduling and change intelligence. No external notification channel or automatic outreach is enabled.
 
@@ -332,7 +333,7 @@ The product is designed as a public security-intelligence platform built on real
 | **Search exports** | CSV and JSON |
 | **Graph exports** | SVG and JSON |
 | **Local investigations** | Private API-key-protected workspace with evidence, notes, tags, status and bundle export |
-| **Reports** | Search, engineer and graph Markdown/JSON exports with source/timestamp/schema metadata; PDF remains optional |
+| **Reports** | Search, engineer and graph Markdown/JSON exports plus optional local PDF reports with source/timestamp/schema metadata |
 | **Data freshness** | Source timestamps, GitHub capacity visibility, retry UX and public-cache policy |
 | **API** | FastAPI with public/private boundaries and OpenAPI |
 | **Background jobs** | Durable queue with idempotency, retries and rate controls |
@@ -449,8 +450,16 @@ Watchlists are local, bounded public-data schedules. They do not store GitHub cr
     snb watchlist disable WATCHLIST_ID
     snb alerts
     snb alerts --min-move 5
+    snb worker --max-jobs 1
+    snb search-history record "cloud" "cloud security" --limit 10
+    snb search-history compare "cloud"
+    snb profile-compare --profile general=profiles/security_profile.yaml --profile cloud=profiles/cloud_security_profile.yaml --user locallhosts
+snb repo-health locallhosts/security-network-builder
+snb taxonomy locallhosts/security-network-builder
+snb graph-export --history-db data/history.db --format graphml --output reports/network.graphml
+snb --format pdf --output-dir reports
 
-`alerts` compares the latest persisted discovery run with the previous run and reports new engineers, dropped engineers, and material score changes. Scheduled watchlists currently expose due-run metadata; execution through the durable worker is the next Phase 6 slice.
+`alerts` compares the latest persisted discovery run with the previous run and reports new engineers, dropped engineers, and material score changes. Due watchlists are queued and executed by the durable worker. Each schedule slot uses an idempotency key, and local alert events can be acknowledged through the protected API without enabling external notifications.
 
 ### Discovery runs
 
@@ -521,7 +530,7 @@ The dashboard is a local, read-only view of your run history:
 - **Ranking** with filters by security area, triage status, and free-text search
 - **Relationship graph** showing engineers as nodes (sized by score, colored by community) connected by shared repositories, organizations, and domains
 - **Changes since previous run**: new engineers, dropped engineers, and score movers
-- **Organizations** that concentrate matching engineers
+- **Organizations** that concentrate matching engineers, with member count, score share, domain diversity, and top-domain signals
 - **Engineer detail** with explanation, itemized score breakdown, evidence, matching repositories, and score history
 - **Triage notes** (`reviewing`, `connected`, `ignored`, plus a private note). These are stored locally as your own notebook; nothing is sent to GitHub.
 
@@ -558,7 +567,7 @@ The browser search endpoint is public and rate-limited in-process. Run history a
 
 The hosted service is intentionally read-only with respect to GitHub. Do not expose private triage data through a public deployment.
 
-> **Persistence:** the current history implementation uses SQLite. Render's free filesystem is not durable across service replacement/redeploys, so persistent hosted run history should use a managed PostgreSQL-backed history layer before relying on the service as a long-term hosted notebook.
+> **Persistence:** the current history implementation uses SQLite. Render's filesystem is not treated as durable state. Production readiness now fails closed unless SNB_DATABASE_URL points to PostgreSQL; configure a managed PostgreSQL database before deployment.
 
 ---
 
@@ -700,6 +709,17 @@ security-network-builder/
 │   ├── graph.py            # relationship graph, centrality, communities
 │   ├── orgs.py             # organization analysis
 │   ├── history.py          # SQLite run history, triage notes, run diffs
+│   ├── alert_state.py      # private alert event acknowledgement state
+│   ├── search_history.py   # bounded repository-search snapshots and comparisons
+│   ├── profile_compare.py  # bounded multi-profile scoring of the same candidates
+│   ├── repository_health.py # deterministic public repository health signals
+│   ├── organization_intelligence.py # bounded organization concentration metrics
+│   ├── taxonomy.py # deterministic security technology/skill taxonomy
+│   ├── graph_formats.py # deterministic graph snapshot/interchange formats
+│   ├── public_sources.py # bounded public security-data integrations
+│   ├── watchlists.py       # scheduled public-data watchlists
+│   ├── watchlist_runner.py # bounded watchlist discovery execution
+│   ├── worker.py            # durable job handlers and scheduler bridge
 │   ├── workspace.py        # private investigation workspace, evidence, notes and timeline
 │   ├── explain.py          # offline and optional LLM explanations
 │   ├── profile_builder.py  # profile suggestion
@@ -789,15 +809,7 @@ Please follow [GitHub's Acceptable Use Policies](https://docs.github.com/en/site
 
 Future work is tracked in the numbered roadmap above. We do not use this section as a second, conflicting checklist.
 
-Priority after the current web-platform work:
-
-1. Finish the professional discovery, profile, and graph experience.
-2. Build the investigation workspace and evidence model.
-3. Complete export/reporting capabilities.
-4. Add operational visibility, abuse controls, and freshness indicators.
-5. Finish production hardening and rollback procedures.
-6. Deploy only after the production gate is green.
-7. Then expand into scheduled intelligence, watchlists, organization intelligence, and ecosystem integrations.
+The current Phase 6 foundation includes scheduled watchlists, deterministic alerts, search-history comparison, multi-profile comparison, organization intelligence, repository health intelligence, security technology taxonomy, graph snapshots/formats, CISA KEV integration, a versioned public API, SDK examples, PyPI release tooling, and contributor/developer documentation. Remaining release gates are external operational verification: actual Render deployment, post-deployment and production smoke tests, and a live PostgreSQL backup/restore drill.
 
 ## Why This Project Exists
 

@@ -57,10 +57,11 @@ class WatchlistStore:
         domains = sorted({d.strip() for d in (domains or []) if d.strip()})[:20]
         with self._conn() as db:
             db.execute(
-                "INSERT INTO watchlists(id,name,query,min_score,domains,enabled,interval_minutes,next_run_at,created_at,updated_at) VALUES(?,?,?,?,?,1,?,?,?,?,?)",
+                "INSERT INTO watchlists(id,name,query,min_score,domains,enabled,interval_minutes,next_run_at,last_run_at,created_at,updated_at) VALUES(?,?,?,?,?,1,?,?,?,?,?)",
                 (wid, name.strip(), query.strip(), float(min_score), json.dumps(domains),
+                 interval_minutes,
                  datetime.fromtimestamp(datetime.now(timezone.utc).timestamp() + interval_minutes * 60, timezone.utc).isoformat(),
-                 now, now),
+                 None, now, now),
             )
         return self.get(wid)
 

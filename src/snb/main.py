@@ -11,6 +11,12 @@ Commands:
   snb profile-suggest  propose a profile from your own GitHub repos
   snb watchlist        manage scheduled public-data watchlists
   snb alerts            show deterministic changes since the previous run
+  snb worker             enqueue due watchlists and execute durable jobs
+  snb search-history     record and compare bounded public repository searches
+  snb profile-compare    compare multiple profiles against the same candidates
+  snb repo-health        assess public repository health metadata
+  snb taxonomy            classify public repository security technologies
+  snb graph-export         export a saved graph as JSON, GraphML, GEXF, or edge list
 """
 from __future__ import annotations
 
@@ -29,9 +35,14 @@ from .github_api import GitHubClient, GitHubError, RateLimitError
 from .graph import build_graph
 from .graphql_api import BATCH_SIZE, fetch_users
 from .history import History
+from .search_history import SearchHistoryStore
+from .profile_compare import compare_profiles
+from .repository_health import assess_repository
+from .organization_intelligence import analyze_organization_intelligence
+from .taxonomy import classify_repository
+from .graph_formats import write_graph_snapshot
 from .models import Candidate, Recommendation
-from .orgs import analyze_orgs
-from .report import render_console, write_reports
+from .report import render_console, write_reports, write_pdf_report
 from .scoring import apply_reputation, score_candidate
 from .alerts import changes_since_previous_run
 from .watchlists import WatchlistStore
@@ -54,7 +65,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--no-history", action="store_true", help="do not record this run")
     p.add_argument("--include-ignored", action="store_true", help="keep engineers you marked 'ignored'")
     p.add_argument("--output-dir", default="reports")
-    p.add_argument("--format", choices=["md", "json", "both"], default="both")
+    p.add_argument("--format", choices=["md", "json", "both", "pdf"], default="both")
     p.add_argument("--no-report", action="store_true", help="print only, write no report files")
     p.add_argument("-v", "--verbose", action="store_true")
     return p.parse_args(argv)
@@ -190,7 +201,7 @@ def run(args: argparse.Namespace) -> int:
 
     # Phase 2/3/4 analysis on the final list
     graph = build_graph(recs, co)
-    org_summary = analyze_orgs(recs)
+    org_summary = analyze_organization_intelligence(recs)
     if history:
         seen, has_runs = history.seen_logins(), history.latest_run_id() is not None
         for rec in recs:
@@ -200,8 +211,15 @@ def run(args: argparse.Namespace) -> int:
 
     print(render_console(recs))
     if recs and not args.no_report:
-        for path in write_reports(recs, args.output_dir, profile.name, args.format, graph.to_dict(), org_summary):
-            print(f"Report written: {path}")
+        if args.format == "pdf":
+            try:
+                print(f"Report written: {write_pdf_report(recs, args.output_dir, profile.name, graph.to_dict(), org_summary)}")
+            except RuntimeError as exc:
+                print(str(exc), file=sys.stderr)
+                return 1
+        else:
+            for path in write_reports(recs, args.output_dir, profile.name, args.format, graph.to_dict(), org_summary):
+                print(f"Report written: {path}")
     if history and recs:
         run_id = history.save_run(recs, profile.name, api, graph.to_dict(), org_summary)
         print(f"Saved as run #{run_id}. View with: snb dashboard")
@@ -230,13 +248,32 @@ def main(argv: list[str] | None = None) -> int:
         return watchlist_command(rest)
     if command == "alerts":
         return alerts_command(rest)
+    if command == "search-history":
+        return search_history_command(rest)
+    if command == "profile-compare":
+        return profile_compare_command(rest)
+    if command == "repo-health":
+        return repository_health_command(rest)
+    if command == "taxonomy":
+        return taxonomy_command(rest)
+    if command == "graph-export":
+        return graph_export_command(rest)
     if command == "worker":
         from .worker import run_worker
         p = argparse.ArgumentParser(prog="snb worker")
         p.add_argument("--jobs-db", default=os.environ.get("SNB_JOBS_DB", "data/jobs.db"))
+        p.add_argument("--watchlists-db", default=os.environ.get("SNB_WATCHLIST_DB", "data/watchlists.db"))
+        p.add_argument("--history-db", default=os.environ.get("SNB_HISTORY_DB", DEFAULT_DB))
         p.add_argument("--max-jobs", type=int, default=1)
+        p.add_argument("--no-schedule", action="store_true", help="run queued jobs without enqueueing due watchlists")
         args = p.parse_args(rest)
-        results = run_worker(jobs_db=args.jobs_db, max_jobs=args.max_jobs)
+        results = run_worker(
+            jobs_db=args.jobs_db,
+            max_jobs=args.max_jobs,
+            enqueue_due=not args.no_schedule,
+            watchlists_db=args.watchlists_db,
+            history_db=args.history_db,
+        )
         for job in results:
             print(f"{job.id} [{job.kind}] {job.status}")
         return 0
@@ -285,9 +322,6 @@ def profile_suggest(argv: list[str]) -> int:
     print(f"\nProfile written to {args.out}. Review it, then run: snb --profile {args.out}")
     return 0
 
-
-if __name__ == "__main__":
-    sys.exit(main())
 
 
 def watchlist_command(argv: list[str]) -> int:
@@ -350,3 +384,168 @@ def alerts_command(argv: list[str]) -> int:
     if not result["alerts"]:
         print("No changes above the configured threshold.")
     return 0
+
+
+
+def profile_compare_command(argv: list[str]) -> int:
+    p = argparse.ArgumentParser(prog="snb profile-compare", description="Compare multiple profiles against the same public GitHub candidates")
+    p.add_argument("--profile", action="append", required=True, help="NAME=PATH; repeat up to 10 profiles")
+    p.add_argument("--user", action="append", required=True, help="public GitHub login; repeat up to 30 users")
+    p.add_argument("--max-repos", type=int, default=100)
+    args = p.parse_args(argv)
+    load_env()
+    profiles: dict[str, Profile] = {}
+    try:
+        for spec in args.profile:
+            name, sep, path = spec.partition("=")
+            if not sep or not name.strip() or not path.strip():
+                raise ValueError("--profile must use NAME=PATH")
+            if name.strip() in profiles:
+                raise ValueError(f"duplicate profile: {name.strip()}")
+            profiles[name.strip()] = Profile.load(path.strip())
+        result = compare_profiles(GitHubClient(os.environ.get("GITHUB_TOKEN") or None), profiles, args.user, max_repos=args.max_repos)
+    except (ValueError, GitHubError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    import json
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
+def search_history_command(argv: list[str]) -> int:
+    p = argparse.ArgumentParser(
+        prog="snb search-history",
+        description="Record or compare bounded public GitHub repository search snapshots",
+    )
+    p.add_argument("--db", default=os.environ.get("SNB_SEARCH_HISTORY_DB", "data/search_history.db"))
+    sub = p.add_subparsers(dest="action", required=True)
+    record = sub.add_parser("record")
+    record.add_argument("name")
+    record.add_argument("query")
+    record.add_argument("--limit", type=int, default=30)
+    record.add_argument("--sort", choices=["stars", "forks", "help-wanted-issues", "updated"], default="stars")
+    compare = sub.add_parser("compare")
+    compare.add_argument("name")
+    compare.add_argument("--snapshot", default=None)
+    args = p.parse_args(argv)
+
+    store = SearchHistoryStore(args.db)
+    if args.action == "record":
+        load_env()
+        try:
+            results = GitHubClient(os.environ.get("GITHUB_TOKEN") or None).search_repositories(
+                args.query, per_page=args.limit, sort=args.sort
+            )
+            snapshot = store.record(args.name, args.query, results)
+        except (GitHubError, ValueError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        print(f"Saved search snapshot {snapshot['id']} for {snapshot['name']} ({len(snapshot['results'])} results).")
+        return 0
+
+    try:
+        result = store.compare(args.name, snapshot_id=args.snapshot)
+    except KeyError:
+        print("Search snapshot not found.", file=sys.stderr)
+        return 1
+    if result is None:
+        print("No search history for that name.")
+        return 0
+    if result["previous"] is None:
+        print(f"{result['name']}: first snapshot; {len(result['added'])} results recorded.")
+        return 0
+    print(f"{result['name']}: {result['previous']['created_at']} -> {result['current']['created_at']}")
+    print("Added: " + (", ".join(x["full_name"] for x in result["added"]) or "none"))
+    print("Removed: " + (", ".join(x["full_name"] for x in result["removed"]) or "none"))
+    print("Changed: " + (
+        ", ".join(
+            f"{x['repository']} stars {x['stars_from']}->{x['stars_to']} rank {x['rank_from']}->{x['rank_to']}"
+            for x in result["changed"]
+        ) or "none"
+    ))
+    return 0
+
+
+def repository_health_command(argv: list[str]) -> int:
+    p = argparse.ArgumentParser(
+        prog="snb repo-health",
+        description="Assess one public GitHub repository using deterministic metadata signals",
+    )
+    p.add_argument("repository", help="owner/name")
+    p.add_argument("--json", action="store_true", help="emit machine-readable JSON")
+    args = p.parse_args(argv)
+    load_env()
+    try:
+        repo = GitHubClient(os.environ.get("GITHUB_TOKEN") or None).get_repository(args.repository.strip())
+    except GitHubError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    if not repo:
+        print("Repository not found or unavailable.", file=sys.stderr)
+        return 1
+    result = assess_repository(repo)
+    if args.json:
+        import json
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0
+    print(f"{result['repository']}: {result['grade']} ({result['score']:g}/100)")
+    for signal in result["signals"]:
+        print(f"- [{signal['severity']}] {signal['detail']}")
+    return 0
+
+
+def taxonomy_command(argv: list[str]) -> int:
+    p = argparse.ArgumentParser(
+        prog="snb taxonomy",
+        description="Classify security technologies from public GitHub repository metadata",
+    )
+    p.add_argument("repository", help="owner/name")
+    args = p.parse_args(argv)
+    load_env()
+    try:
+        repo = GitHubClient(os.environ.get("GITHUB_TOKEN") or None).get_repository(args.repository.strip())
+    except GitHubError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    if not repo:
+        print("Repository not found or unavailable.", file=sys.stderr)
+        return 1
+    matches = classify_repository(repo)
+    print(f"{repo.get('full_name') or args.repository}:")
+    for item in matches:
+        print(f"- {item['label']}: {', '.join(item['matches'])}")
+    if not matches:
+        print("- No taxonomy matches in public metadata.")
+    return 0
+
+
+def graph_export_command(argv: list[str]) -> int:
+    p = argparse.ArgumentParser(
+        prog="snb graph-export",
+        description="Export a saved discovery graph in a standard interchange format",
+    )
+    p.add_argument("--history-db", default=DEFAULT_DB)
+    p.add_argument("--run", type=int, default=None, help="saved run id; defaults to the latest run")
+    p.add_argument("--format", choices=["json", "edge-list", "graphml", "gexf"], default="json")
+    p.add_argument("--output", required=True)
+    args = p.parse_args(argv)
+    history = History(args.history_db)
+    run_id = args.run or history.latest_run_id()
+    if run_id is None:
+        print("No saved discovery runs are available.", file=sys.stderr)
+        return 1
+    data = history.get_run(run_id)
+    if not data:
+        print(f"Run {run_id} not found.", file=sys.stderr)
+        return 1
+    try:
+        target = write_graph_snapshot(data["graph"], args.output, args.format)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    print(f"Exported run #{run_id} graph to {target} ({args.format}).")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

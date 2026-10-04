@@ -170,7 +170,7 @@ class GitHubClient:
             return self._request(f"/users/{login}")
         except NotFoundError:
             return {}
-
+\n    def get_repository(self, full_name: str) -> dict[str, Any]:\n        """Fetch one public repository and return an empty object when absent."""\n        try:\n            return self._request(f"/repos/{full_name}")\n        except NotFoundError:\n            return {}\n
     def rate_limit(self) -> dict[str, Any]:
         """Remaining quota per API. This endpoint does not count against your limits."""
         return self._request("/rate_limit").get("resources", {})

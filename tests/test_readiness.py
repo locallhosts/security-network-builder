@@ -43,3 +43,14 @@ def test_readiness_rejects_unknown_ai_provider(monkeypatch, tmp_path):
     monkeypatch.setenv("AI_PROVIDER", "unknown")
     response = TestClient(app).get("/api/readiness")
     assert response.json()["checks"]["ai_provider"] == "error"
+
+
+def test_readiness_does_not_echo_production_secrets(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNB_HISTORY_DB", str(tmp_path / "history.db"))
+    monkeypatch.setenv("SNB_JOBS_DB", str(tmp_path / "jobs.db"))
+    monkeypatch.setenv("SNB_ENV", "production")
+    monkeypatch.setenv("API_KEYS", "super-secret-api-key")
+    monkeypatch.setenv("SNB_ALLOWED_HOSTS", "example.com")
+    monkeypatch.setenv("AI_PROVIDER", "offline")
+    body = TestClient(app).get("/api/readiness").text
+    assert "super-secret-api-key" not in body

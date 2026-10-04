@@ -19,6 +19,7 @@ from fastapi import Body, FastAPI, Header, HTTPException, Query, Request, Respon
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html, get_swagger_ui_oauth2_redirect_html
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ..audit import AuditLog
@@ -36,11 +37,16 @@ from ..alerts import changes_since_previous_run
 from ..alert_state import AlertStore
 from ..watchlists import WatchlistStore
 from ..public_sources import fetch_cisa_kev
+from ..main import analyse, enrich_rest
+from ..graph import build_graph
+from ..models import Candidate
 
 app = FastAPI(
     title="Security Network Builder API",
     version="1.0.0",
-    description="Public, read-only GitHub security discovery and community graph API.",
+    description="Public GitHub security discovery, engineer intelligence, and community graph API.",
+    docs_url=None,
+    redoc_url=None,
 )
 PUBLIC_PAGE = (Path(__file__).with_name("index.html")).read_text(encoding="utf-8")
 
@@ -107,6 +113,19 @@ class SearchResponse(BaseModel):
     results: list[SearchResult]
     source: str = "github"
     generated_at: str
+
+class PublicGraphBuildRequest(BaseModel):
+    query: str = Field(min_length=2, max_length=100)
+    limit: int = Field(default=20, ge=1, le=30)
+    top: int = Field(default=15, ge=1, le=25)
+    min_score: float = Field(default=0, ge=0, le=1000)
+    language: str | None = Field(default=None, max_length=40)
+    min_stars: int = Field(default=0, ge=0, le=1_000_000)
+    owner: str | None = Field(default=None, max_length=39, pattern="^[A-Za-z0-9-]+$")
+    topic: str | None = Field(default=None, max_length=50)
+    archived: bool | None = None
+    fork: bool | None = None
+    sort: str = Field(default="stars", pattern="^(stars|forks|updated|help-wanted-issues|best-match)$")
 
 
 class UserSearchResult(BaseModel):
@@ -325,10 +344,11 @@ _PUBLIC_RATE_LIMITS: dict[str, tuple[int, float]] = {
     "compare": (20, 60.0),
     "relationships": (30, 60.0),
     "graph": (20, 60.0),
+    "graph_build": (3, 600.0),
     "usage": (10, 60.0),
     "kev": (10, 60.0),
 }
-_PUBLIC_PATHS = {"/api/search", "/api/users/search", "/api/graph", "/api/usage"}
+_PUBLIC_PATHS = {"/api/search", "/api/users/search", "/api/graph", "/api/public/graph/build", "/api/usage"}
 _PRIVATE_BODY_LIMIT = 1_048_576
 _PUBLIC_BODY_LIMIT = 32_768
 
@@ -445,11 +465,19 @@ async def security_headers(request: Request, call_next: Any) -> Any:
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
     response.headers.setdefault("X-Frame-Options", "DENY")
-    response.headers.setdefault(
-        "Content-Security-Policy",
-        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
-        "connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
-    )
+    if request.url.path in {"/docs", "/redoc"}:
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self'; "
+            "img-src 'self' data: https://fastapi.tiangolo.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        )
+    else:
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+            "connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        )
     if hasattr(request.state, "rate_limit"):
         decision = request.state.rate_limit
         response.headers.setdefault("X-RateLimit-Limit", str(decision.limit))
@@ -459,6 +487,31 @@ async def security_headers(request: Request, call_next: Any) -> Any:
         public_cache = request.url.path in {"/api/search", "/api/users/search", "/api/public/engineers/compare", "/api/graph"}
         response.headers.setdefault("Cache-Control", "public, max-age=30, stale-while-revalidate=60" if public_cache else "no-store")
     return response
+
+
+@app.get("/docs", include_in_schema=False, response_class=HTMLResponse)
+def swagger_docs() -> HTMLResponse:
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - Swagger UI",
+        oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
+        swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
+        swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css",
+    )
+
+
+@app.get(app.swagger_ui_oauth2_redirect_url, include_in_schema=False)
+def swagger_redirect() -> HTMLResponse:
+    return get_swagger_ui_oauth2_redirect_html()
+
+
+@app.get("/redoc", include_in_schema=False, response_class=HTMLResponse)
+def redoc_docs() -> HTMLResponse:
+    return get_redoc_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - ReDoc",
+        redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@2/bundles/redoc.standalone.js",
+    )
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -548,6 +601,75 @@ def search(
                 response.headers[header] = client.last_headers[header]
         response.headers["X-Data-Source"] = "github"
     return SearchResponse(query=q, page=page, limit=limit, results=results, generated_at=datetime.now(timezone.utc).isoformat())
+
+
+@app.post("/api/public/graph/build", tags=["public"])
+def build_public_graph(payload: PublicGraphBuildRequest, request: Request, response: Response) -> dict[str, Any]:
+    """Build and persist a bounded graph from the user's current public GitHub search."""
+    _check_public_rate(request, "graph_build", response)
+    profile = Profile.load()
+    client = GitHubClient(load_settings().github_token)
+    search_query = payload.query.strip()
+    if payload.language:
+        search_query += f" language:{payload.language.strip()}"
+    if payload.min_stars:
+        search_query += f" stars:>={payload.min_stars}"
+    if payload.owner:
+        search_query += f" user:{payload.owner}"
+    if payload.topic:
+        search_query += f" topic:{payload.topic.strip()}"
+    if payload.archived is not None:
+        search_query += f" archived:{str(payload.archived).lower()}"
+    if payload.fork is not None:
+        search_query += f" fork:{str(payload.fork).lower()}"
+    try:
+        items = client.search_repositories(search_query, per_page=payload.limit, page=1, sort=payload.sort)
+    except GitHubError as exc:
+        _METRICS["github_errors"] += 1
+        raise HTTPException(status_code=502, detail="upstream GitHub service unavailable") from exc
+
+    excluded = {u.lower() for u in profile.settings.exclude_users}
+    if profile.github_username:
+        excluded.add(profile.github_username.lower())
+    candidates: dict[str, Candidate] = {}
+    for item in items:
+        owner_data = item.get("owner") or {}
+        login = owner_data.get("login")
+        if not isinstance(login, str) or not login or login.lower() in excluded:
+            continue
+        if profile.settings.users_only and owner_data.get("type") != "User":
+            continue
+        candidate = candidates.setdefault(
+            login,
+            Candidate(login=login, html_url=owner_data.get("html_url", f"https://github.com/{login}")),
+        )
+        candidate.seed_repos.append(item)
+
+    ranked = sorted(candidates.values(), key=lambda c: c.seed_weight, reverse=True)
+    recs = analyse(client, ranked, profile, "rest", payload.min_score)
+    recs.sort(key=lambda r: r.score, reverse=True)
+    recs = recs[: payload.top]
+    if recs:
+        enrich_rest(client, recs)
+        recs.sort(key=lambda r: r.score, reverse=True)
+
+    graph = build_graph(recs).to_dict()
+    org_summary = analyze_organization_intelligence(recs)
+    run_id = None
+    if recs:
+        run_id = get_history().save_run(recs, profile.name, "rest-web", graph, org_summary)
+    _METRICS["graphs"] += 1
+    return {
+        "schema_version": 1,
+        "source": "github-search",
+        "query": payload.query,
+        "search_query": search_query,
+        "candidates": len(candidates),
+        "engineers": len(recs),
+        "run_id": run_id,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "graph": graph,
+    }
 
 
 @app.post("/api/jobs", response_model=JobResponse, status_code=202, tags=["private"])

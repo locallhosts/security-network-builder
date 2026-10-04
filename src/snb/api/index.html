@@ -176,7 +176,7 @@ async function page(delta){
   state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults();setStatus(state.results.length+" result(s) on page "+d.page+" · source "+(d.source||"github")+" · fetched "+new Date(d.generated_at).toLocaleTimeString(),"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit
  }catch(e){state.page=Math.max(1,target-delta);setStatus(e.message,"error");$("#prev").disabled=state.page<=1}
 }
-async function loadEngineer(n.login){
+async function loadEngineer(login){
  const card=$("#profile-card"),box=$("#profile");card.hidden=false;clear(box);box.appendChild(el("div",{class:"empty"},"Loading @"+login+"…"));card.scrollIntoView({behavior:"smooth",block:"start"});
  try{
   const d=await getJson("/api/public/engineers/"+encodeURIComponent(login));state.profile=d;$("#export-profile").disabled=false;$("#export-profile-md").disabled=false;$("#share-profile").disabled=false;clear(box);$("#profile-title").textContent="Engineer · @"+d.login;
@@ -297,5 +297,3 @@ async function loadGraph(){
 const initialEngineer=new URLSearchParams(location.search).get("engineer");if(initialEngineer)loadEngineer(initialEngineer);
 loadUsage();loadGraph();
 </script>
-</body>
-</html>

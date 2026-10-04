@@ -75,7 +75,7 @@ def test_public_graph_build_persists_and_reloads_current_snapshot(monkeypatch, t
 
     loaded = client.get("/api/graph")
     assert loaded.status_code == 200
-    assert loaded.json()["generated_at"] is None
+    assert loaded.json()["generated_at"]
     assert [node["login"] for node in loaded.json()["nodes"]] == ["alice", "bob"]
     assert loaded.json()["edges"] == first_data["graph"]["edges"]
 

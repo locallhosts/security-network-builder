@@ -620,7 +620,8 @@ def search_users(
     try:
         items = client.search_users(q.strip(), per_page=limit, page=page, sort=sort)
     except GitHubError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        _METRICS["github_errors"] += 1
+        raise HTTPException(status_code=502, detail="upstream GitHub service unavailable") from exc
 
     results = []
     for item in items:
@@ -658,7 +659,8 @@ def public_engineer(request: Request, response: Response, login: str) -> PublicE
         repositories = client.list_user_repos(login, limit=30)
         organizations = client.list_user_orgs(login)
     except GitHubError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        _METRICS["github_errors"] += 1
+        raise HTTPException(status_code=502, detail="upstream GitHub service unavailable") from exc
 
     public_repositories = []
     activity = []
@@ -721,7 +723,8 @@ def usage(request: Request, response: Response) -> dict[str, Any]:
     try:
         resources = client.rate_limit()
     except GitHubError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        _METRICS["github_errors"] += 1
+        raise HTTPException(status_code=502, detail="upstream GitHub service unavailable") from exc
     response.headers["X-Data-Source"] = "github"
     return {"source": "github", "core": resources.get("core") or {}, "search": resources.get("search") or {}, "generated_at": datetime.now(timezone.utc).isoformat()}
 

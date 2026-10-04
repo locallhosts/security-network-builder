@@ -64,3 +64,29 @@ def test_worker_status_requires_auth_and_exposes_only_queue_counts(monkeypatch, 
     body = response.json()
     assert body["status"] == "ok"
     assert set(body["queue"]) == {"queued", "running", "succeeded", "failed", "total"}
+
+
+def test_workspace_explanation_is_private_and_records_provenance(monkeypatch, tmp_path):
+    from snb.models import Recommendation
+
+    monkeypatch.setenv("API_KEYS", "secret")
+    monkeypatch.setenv("SNB_WORKSPACE_DB", str(tmp_path / "workspaces.db"))
+    monkeypatch.setenv("AI_PROVIDER", "offline")
+    monkeypatch.setattr("snb.api.app.GitHubClient.get_user", lambda self, login: {"login": login, "html_url": f"https://github.com/{login}"})
+    monkeypatch.setattr("snb.api.app.GitHubClient.list_user_repos", lambda self, login, limit=30: [{"name": "tool", "stargazers_count": 3, "language": "Go", "description": "security"}])
+    monkeypatch.setattr("snb.api.app.score_candidate", lambda *args, **kwargs: Recommendation(
+        login="alice", url="https://github.com/alice", score=10, matched_domains=["Cloud"],
+        breakdown={"Cloud": 10}, evidence=["repo"], matched_repos=[{"name": "tool", "stars": 3, "language": "Go"}],
+    ))
+    client = TestClient(app)
+    workspace = client.post("/api/workspaces", json={"title": "case"}, headers={"X-API-Key": "secret"}).json()
+    response = client.post(
+        f"/api/workspaces/{workspace['id']}/explain",
+        json={"login": "alice"},
+        headers={"X-API-Key": "secret"},
+    )
+    assert response.status_code == 200
+    assert response.json()["source"] == "deterministic"
+    assert response.json()["provider"] == "offline"
+    data = client.get(f"/api/workspaces/{workspace['id']}", headers={"X-API-Key": "secret"}).json()
+    assert any("Explanation (offline):" in note["body"] for note in data["notes"])

@@ -16,6 +16,7 @@ from typing import Any
 import requests
 
 from .models import Recommendation
+from .audit import AuditLog
 
 log = logging.getLogger(__name__)
 
@@ -116,18 +117,30 @@ class LLM:
         return self.complete(_SYSTEM, f"<data>\n{_escape(_payload(rec))}\n</data>", max_tokens=300)
 
 
-def explain_all(recs: list[Recommendation], llm: LLM | None = None) -> None:
-    """Fill rec.explanation: template always, LLM text when available."""
+def explain_all(recs: list[Recommendation], llm: LLM | None = None, audit: AuditLog | None = None) -> None:
+    """Fill explanations and record non-secret AI provenance when a remote provider is used."""
     use_llm = llm is not None
+    provider = "offline"
+    if llm is not None:
+        provider = "openai" if isinstance(llm, OpenAILLM) else "anthropic"
     for rec in recs:
         rec.explanation = template_explanation(rec)
+        rec.explanation_source = "deterministic"
+        rec.explanation_provider = "offline"
         if use_llm:
             try:
                 rec.explanation = llm.explain(rec)
+                rec.explanation_source = "ai"
+                rec.explanation_provider = provider
             except LLMError as exc:
                 log.warning("LLM explanation failed (%s); using template for the rest", exc)
-                use_llm = False  # don't hammer a failing endpoint
-
+                use_llm = False
+    if audit is not None and llm is not None:
+        audit.record(
+            "ai.explanation",
+            outcome="success" if all(r.explanation_source == "ai" for r in recs) else "degraded",
+            detail=f"provider={provider}; requested={len(recs)}; ai_generated={sum(r.explanation_source == 'ai' for r in recs)}",
+        )
 
 class OpenAILLM:
     """Minimal OpenAI-compatible explanation client using the existing requests dependency."""

@@ -287,7 +287,7 @@ def _public_engineer_intelligence(repositories: list[dict[str, Any]]) -> tuple[l
     return sorted(domain_hits), sorted(skills, key=str.lower)[:40], trends, signals[:30]
 
 
-_METRICS = {"requests": 0, "errors": 0, "searches": 0, "profiles": 0, "graphs": 0}
+_METRICS = {"requests": 0, "errors": 0, "rate_limited": 0, "github_errors": 0, "searches": 0, "profiles": 0, "graphs": 0}
 
 
 class _JsonFormatter(logging.Formatter):
@@ -370,22 +370,6 @@ def require_api_key(value: str | None) -> None:
     if value is None or not any(secrets.compare_digest(value, configured) for configured in settings.api_keys):
         audit.record("auth.private", outcome="rejected", detail="invalid API key")
         raise HTTPException(status_code=401, detail="invalid API key")
-
-
-def _check_search_rate(request: Request) -> None:
-    now = time.monotonic()
-    key = request.client.host if request.client else "unknown"
-    hits = _search_hits[key]
-    while hits and now - hits[0] >= _SEARCH_WINDOW:
-        hits.popleft()
-    if len(hits) >= _SEARCH_LIMIT:
-        retry_after = max(1, int(_SEARCH_WINDOW - (now - hits[0])))
-        raise HTTPException(
-            status_code=429,
-            detail="search rate limit exceeded; try again later",
-            headers={"Retry-After": str(retry_after)},
-        )
-    hits.append(now)
 
 
 @app.middleware("http")

@@ -52,3 +52,15 @@ def test_job_api_accepts_payload_and_returns_result(monkeypatch, tmp_path):
                            headers={"X-API-Key": "secret", "Idempotency-Key": "alice-1"})
     assert response.status_code == 202
     assert response.json()["result"] == ""
+
+
+def test_worker_status_requires_auth_and_exposes_only_queue_counts(monkeypatch, tmp_path):
+    monkeypatch.setenv("API_KEYS", "secret")
+    monkeypatch.setenv("SNB_JOBS_DB", str(tmp_path / "jobs.db"))
+    client = TestClient(app)
+    assert client.get("/api/worker/status").status_code == 401
+    response = client.get("/api/worker/status", headers={"X-API-Key": "secret"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert set(body["queue"]) == {"queued", "running", "succeeded", "failed", "total"}

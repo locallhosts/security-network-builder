@@ -806,3 +806,5 @@ The public FastAPI boundary includes bounded, process-local abuse controls in ad
 Rate limits are intentionally process-local. A horizontally scaled deployment should also enforce a shared edge/WAF/API-gateway limit before the application.
 
 Supported endpoint overrides use requests per minute, for example `SNB_RATE_LIMIT_SEARCH=20` or `SNB_RATE_LIMIT_GRAPH=10`. Invalid values fall back to safe defaults.
+
+For production, `SNB_ALLOWED_HOSTS` must be explicitly configured; wildcard host acceptance is rejected by the readiness gate. Render's deployment manifest sets it to the service hostname and should be adjusted if a custom domain is used.

@@ -144,7 +144,7 @@ function csv(rows){
  return [cols.map(esc).join(","),...rows.map(r=>cols.map(k=>esc(r[k])).join(","))].join("\\n");
 }
 function apiUrl(path,params){const u=new URL(path,location.origin);Object.entries(params).forEach(([k,v])=>{if(v!==""&&v!==null&&v!==undefined)u.searchParams.set(k,v)});return u}
-async function getJson(url){const r=await fetch(url,{headers:{Accept:"application/json"}});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.detail||"Request failed");return d}
+async function getJson(url){const r=await fetch(url,{headers:{Accept:"application/json"}});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(apiErrorMessage(d.detail||d,"Request failed"));return d}
 
 function renderRepoResults(){
  clear($("#results"));const items=state.results;

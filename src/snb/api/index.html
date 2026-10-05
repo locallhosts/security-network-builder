@@ -144,7 +144,7 @@ function csv(rows){
  return [cols.map(esc).join(","),...rows.map(r=>cols.map(k=>esc(r[k])).join(","))].join("\\n");
 }
 function apiUrl(path,params){const u=new URL(path,location.origin);Object.entries(params).forEach(([k,v])=>{if(v!==""&&v!==null&&v!==undefined)u.searchParams.set(k,v)});return u}
-async function getJson(url){const r=await fetch(url,{headers:{Accept:"application/json"}});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.detail||"Request failed");return d}
+async function getJson(url){const r=await fetch(url,{headers:{Accept:"application/json"}});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(apiErrorMessage(d.detail||d,"Request failed"));return d}
 
 function renderRepoResults(){
  clear($("#results"));const items=state.results;
@@ -355,7 +355,7 @@ async function searchGraphIntelligence(){
  clear(box);if(q.length<2){status.textContent="Enter at least 2 characters.";return}
  status.textContent="Searching the persisted SNB snapshot…";
  try{
-  const d=await getJson("/api/graph/search",{q,limit:20});
+  const d=await getJson(apiUrl("/api/graph/search",{q,limit:20}));
   if(!d.results.length){status.textContent="No matching intelligence in run #"+(d.run_id??"n/a");return}
   status.textContent=d.results.length+" match(es) · read-only snapshot search";
   d.results.forEach(x=>{

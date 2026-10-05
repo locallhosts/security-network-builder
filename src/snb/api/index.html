@@ -355,7 +355,7 @@ async function searchGraphIntelligence(){
  clear(box);if(q.length<2){status.textContent="Enter at least 2 characters.";return}
  status.textContent="Searching the persisted SNB snapshot…";
  try{
-  const d=await getJson("/api/graph/search",{q,limit:20});
+  const d=await getJson(apiUrl("/api/graph/search",{q,limit:20}));
   if(!d.results.length){status.textContent="No matching intelligence in run #"+(d.run_id??"n/a");return}
   status.textContent=d.results.length+" match(es) · read-only snapshot search";
   d.results.forEach(x=>{

@@ -39,7 +39,8 @@ from ..watchlists import WatchlistStore
 from ..public_sources import fetch_cisa_kev
 from ..main import analyse, enrich_rest
 from ..graph import build_graph
-from ..models import Candidate
+from ..models import Candidate, Recommendation
+from ..organization_intelligence import analyze_organization_intelligence
 
 app = FastAPI(
     title="Security Network Builder API",
@@ -664,6 +665,65 @@ def search(
                 response.headers[header] = client.last_headers[header]
         response.headers["X-Data-Source"] = "github"
     return SearchResponse(query=q, page=page, limit=limit, results=results, generated_at=datetime.now(timezone.utc).isoformat())
+
+
+@app.get("/api/graph/search", tags=["public"])
+def graph_search(
+    request: Request,
+    response: Response,
+    q: str = Query(..., min_length=2, max_length=100),
+    limit: int = Query(default=20, ge=1, le=50),
+) -> dict[str, Any]:
+    """Search the latest persisted SNB intelligence snapshot without changing it."""
+    _check_public_rate(request, "graph_search", response)
+    h = get_history()
+    run_id = h.latest_run_id()
+    if run_id is None:
+        return {"query": q, "run_id": None, "results": [], "source": "snb-analysis"}
+
+    data = h.get_run(run_id)
+    if not data:
+        return {"query": q, "run_id": run_id, "results": [], "source": "snb-analysis"}
+
+    needle = q.strip().lower()
+    graph_data = data.get("graph") or {}
+    nodes = {str(n.get("login")): n for n in graph_data.get("nodes", []) if n.get("login")}
+    matches: list[dict[str, Any]] = []
+    for raw in data.get("recommendations", []):
+        login = str(raw.get("login") or "")
+        if not login:
+            continue
+        searchable = " ".join(
+            [
+                login,
+                " ".join(str(x) for x in raw.get("matched_domains", [])),
+                " ".join(str(x) for x in raw.get("orgs", [])),
+                " ".join(str(x) for x in raw.get("evidence", [])),
+                " ".join(str((x or {}).get("name", "")) for x in raw.get("matched_repos", [])),
+            ]
+        ).lower()
+        if needle not in searchable:
+            continue
+        node = nodes.get(login, {})
+        matches.append(
+            {
+                "login": login,
+                "score": raw.get("score", 0),
+                "matched_domains": raw.get("matched_domains", []),
+                "orgs": raw.get("orgs", []),
+                "evidence": raw.get("evidence", [])[:5],
+                "community": node.get("community"),
+                "centrality": node.get("centrality", 0),
+                "url": raw.get("url"),
+            }
+        )
+    matches.sort(key=lambda x: (-float(x.get("score", 0)), str(x.get("login", "")).lower()))
+    return {
+        "query": q,
+        "run_id": run_id,
+        "source": "snb-analysis",
+        "results": matches[:limit],
+    }
 
 
 @app.post("/api/public/graph/build", tags=["public"])

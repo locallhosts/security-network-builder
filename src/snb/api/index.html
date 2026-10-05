@@ -37,7 +37,7 @@ footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
 <main class="shell">
 <section class="hero">
 <div><div class="eyebrow">Security intelligence platform</div><h1>Find the people, projects and relationships behind security engineering.</h1><p>Search public GitHub repositories and engineers, inspect evidence, and explore the security community as an interactive network. Read-only, evidence-first, and designed for serious research.</p></div>
-<div class="hero-card"><div class="metrics"><div class="metric"><b id="metric-nodes">—</b><span>engineers</span></div><div class="metric"><b id="metric-edges">—</b><span>relationships</span></div><div class="metric"><b id="metric-communities">—</b><span>communities</span></div><div class="metric"><b id="metric-top">—</b><span>top centrality</span></div></div><div id="rate-status" class="meta" style="margin-top:10px">Checking GitHub API capacity…</div></div>
+<div class="hero-card"><div class="metrics"><div class="metric"><b id="metric-nodes">—</b><span>engineers</span></div><div class="metric"><b id="metric-edges">—</b><span>relationships</span></div><div class="metric"><b id="metric-communities">—</b><span>communities</span></div><div class="metric"><b id="metric-top">—</b><span>top engineer</span></div></div><div id="rate-status" class="meta" style="margin-top:10px">Checking GitHub API capacity…</div></div>
 </section>
 
 <section class="panel" id="search">
@@ -328,6 +328,3 @@ async function loadGraph(){
  try{const d=await getJson("/api/graph");applyGraphSnapshot(d);return true}catch(e){setGraphStatus(e.message);return false}
 }
 $("#refresh-graph").addEventListener("click",async()=>{const b=$("#refresh-graph");b.disabled=true;b.textContent="Refreshing…";setGraphStatus("Reloading the latest persisted intelligence snapshot…");try{const ok=await loadGraph();if(ok)setGraphStatus("Latest persisted intelligence snapshot loaded.");}finally{b.disabled=false;b.textContent="Refresh intelligence"}});
-const initialEngineer=new URLSearchParams(location.search).get("engineer");if(initialEngineer)loadEngineer(initialEngineer);
-loadUsage();loadGraph();
-</script>

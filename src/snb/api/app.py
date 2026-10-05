@@ -408,6 +408,7 @@ _PUBLIC_RATE_LIMITS: dict[str, tuple[int, float]] = {
     "compare": (20, 60.0),
     "relationships": (30, 60.0),
     "graph": (20, 60.0),
+    "graph_search": (30, 60.0),
     "graph_build": (3, 600.0),
     "usage": (10, 60.0),
     "kev": (10, 60.0),

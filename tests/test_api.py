@@ -137,6 +137,7 @@ def test_graph_search_queries_latest_persisted_snapshot(monkeypatch, tmp_path):
     history.save_run(recs, "test", "rest", graph, [])
     client = TestClient(app)
 
+    assert "graph_search" in __import__("snb.api.app", fromlist=["_PUBLIC_RATE_LIMITS"])._PUBLIC_RATE_LIMITS
     response = client.get("/api/graph/search?q=ebpf")
     assert response.status_code == 200
     assert response.json()["run_id"] == 1

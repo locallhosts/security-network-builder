@@ -68,6 +68,9 @@ def test_public_page_separates_discovery_from_intelligence_graph():
     assert "Security Intelligence Graph" in PUBLIC_PAGE
     assert "does not modify the Security Intelligence Graph" in PUBLIC_PAGE
     assert "Refresh intelligence" in PUBLIC_PAGE
+    assert "Analyze search → intelligence" in PUBLIC_PAGE
+    assert "Search persisted intelligence" in PUBLIC_PAGE
+    assert "/api/graph/search" in PUBLIC_PAGE
     assert "Build graph from search" not in PUBLIC_PAGE
     assert "buildGraphFromSearch" not in PUBLIC_PAGE
 

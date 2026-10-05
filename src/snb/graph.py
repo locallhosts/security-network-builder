@@ -5,6 +5,9 @@ Edges (merged into one weighted edge per pair):
   shared-org      both are public members of the same org          weight 3 per org
   shared-domain   they match 2+ of the same security domains       weight 1 per domain
 
+A shared domain alone is intentionally not treated as a relationship: two matching domains are
+required to reduce false-positive associations. Edges are evidence signals, not claims of personal association.
+
 Metrics: weighted degree centrality (who is most connected) and communities
 (deterministic label propagation, so identical input gives identical output).
 """

@@ -386,6 +386,27 @@ GET /api/users/search
 
 This separation is a core product invariant and should be preserved in future frontend, API, deployment, and test work.
 
+### Discovery-to-intelligence workflow
+
+The public UI supports an explicit analyst workflow without blurring the discovery/graph boundary:
+
+1. **Search GitHub discovery** — use the repository or engineer search, filters, history, exports, and profile inspection normally.
+2. **Analyze search → intelligence** — from a repository discovery result, an analyst can explicitly send the current query and filters through SNB analysis. The UI confirms that this operation creates a **new persisted intelligence snapshot** and therefore changes the latest canonical graph intentionally.
+3. **Search persisted intelligence** — the graph surface has a read-only intelligence search across the latest persisted recommendations. It can match engineer logins, security domains, organizations, evidence, and matched repositories, then jump directly to the corresponding graph node/profile.
+4. **Refresh intelligence** — reloads the latest persisted snapshot without triggering analysis.
+
+The relevant public API surfaces are:
+
+```text
+GET  /api/search
+GET  /api/users/search
+GET  /api/graph
+GET  /api/graph/search
+POST /api/public/graph/build
+```
+
+The important distinction is that `GET /api/graph/search` is read-only, while `POST /api/public/graph/build` is an explicit analysis operation that creates the next persisted snapshot.
+
 ## Key Features
 
 The product is designed as a public security-intelligence platform built on real GitHub data.

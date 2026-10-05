@@ -98,6 +98,59 @@ def test_public_graph_build_persists_and_reloads_current_snapshot(monkeypatch, t
     assert [node["login"] for node in reloaded.json()["nodes"]] == ["carol"]
 
 
+def test_graph_search_queries_latest_persisted_snapshot(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNB_HISTORY_DB", str(tmp_path / "history.db"))
+    history = __import__("snb.history", fromlist=["History"]).History(str(tmp_path / "history.db"))
+    recs = [
+        Recommendation(
+            login="alice",
+            url="https://github.com/alice",
+            score=30.0,
+            matched_domains=["eBPF", "Cloud Security"],
+            breakdown={},
+            evidence=["Maintains runtime security tooling"],
+            matched_repos=[{"name": "ebpf-tool"}],
+            orgs=["AcmeSec"],
+        ),
+        Recommendation(
+            login="bob",
+            url="https://github.com/bob",
+            score=20.0,
+            matched_domains=["Detection Engineering"],
+            breakdown={},
+            evidence=["Detection rules and threat hunting"],
+            matched_repos=[{"name": "sigma-rules"}],
+            orgs=["BlueSec"],
+        ),
+    ]
+    graph = {
+        "nodes": [
+            {"login": "alice", "score": 30.0, "community": 0, "centrality": 1.0},
+            {"login": "bob", "score": 20.0, "community": 1, "centrality": 0.0},
+        ],
+        "edges": [],
+        "communities": [
+            {"id": 0, "size": 1, "members": ["alice"], "top_domain": "eBPF"},
+            {"id": 1, "size": 1, "members": ["bob"], "top_domain": "Detection Engineering"},
+        ],
+    }
+    history.save_run(recs, "test", "rest", graph, [])
+    client = TestClient(app)
+
+    response = client.get("/api/graph/search?q=ebpf")
+    assert response.status_code == 200
+    assert response.json()["run_id"] == 1
+    assert [item["login"] for item in response.json()["results"]] == ["alice"]
+
+    response = client.get("/api/graph/search?q=AcmeSec")
+    assert response.status_code == 200
+    assert [item["login"] for item in response.json()["results"]] == ["alice"]
+
+    response = client.get("/api/graph/search?q=sigma")
+    assert response.status_code == 200
+    assert [item["login"] for item in response.json()["results"]] == ["bob"]
+
+
 def test_protected_endpoint_requires_key(monkeypatch):
     monkeypatch.setenv("API_KEY", "secret")
     client = TestClient(app)

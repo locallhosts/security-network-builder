@@ -41,7 +41,7 @@ footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
 </section>
 
 <section class="panel" id="search">
-<div class="panel-head"><div><h2>GitHub discovery</h2><div class="muted">Search public repositories and engineers. Discovery is exploratory and does not modify the Security Intelligence Graph.</div></div><div class="actions"><button class="btn" id="export-results" type="button" disabled>Export CSV</button><button class="btn" id="export-json" type="button" disabled>Export JSON</button><button class="btn" id="export-markdown" type="button" disabled>Export Markdown</button></div></div>
+<div class="panel-head"><div><h2>GitHub discovery</h2><div class="muted">Search public repositories and engineers. Discovery is exploratory and does not modify the Security Intelligence Graph.</div></div><div class="actions"><button class="btn primary" id="analyze-discovery" type="button" disabled>Analyze search → intelligence</button><button class="btn" id="export-results" type="button" disabled>Export CSV</button><button class="btn" id="export-json" type="button" disabled>Export JSON</button><button class="btn" id="export-markdown" type="button" disabled>Export Markdown</button></div></div>
 <div class="tabs"><button class="tab active" data-tab="repos">Repositories</button><button class="tab" data-tab="users">Engineers</button></div>
 
 <div id="repo-search">
@@ -105,7 +105,7 @@ footer{padding:35px 0 60px;color:var(--muted);font-size:12px}
 <label class="field">Find node<input id="node-filter" type="search" placeholder="@login"></label><label class="field">Path from<input id="path-from" placeholder="alice"></label><label class="field">Path to<input id="path-to" placeholder="bob"></label>
 <button class="btn" id="apply-graph" type="button">Apply</button><button class="btn" id="shortest-path" type="button">Shortest path</button><button class="btn" id="zoom-out" type="button" aria-label="Zoom out">−</button><button class="btn" id="zoom-in" type="button" aria-label="Zoom in">+</button><button class="btn" id="reset-graph" type="button">Reset view</button>
 </div>
-<div class="status" id="graph-status" aria-live="polite"></div><div class="data-box" style="margin-bottom:14px"><strong>Intelligence model</strong><div class="muted">Engineers are ranked from SNB security evidence; relationships require recorded evidence; communities represent the latest persisted analysis. Use <b>GitHub discovery</b> to explore candidates, then use the terminal/private analysis workflow to create a new intelligence run.</div><div class="meta" id="graph-snapshot-meta" style="margin-top:7px">Loading latest persisted snapshot…</div></div><div class="graph-tools"><label class="field">Edge type<select id="edge-type"><option value="">All relationships</option><option value="contributor">Repository contribution</option><option value="organization">Shared organization</option><option value="domain">Shared security domains</option></select></label></div>
+<div class="data-box" style="margin-bottom:14px"><strong>Search persisted intelligence</strong><div class="muted">Search the latest SNB snapshot by engineer, security domain, organization, evidence, or matched repository. This is read-only and never changes the graph.</div><div class="graph-tools" style="margin-top:10px"><label class="field" style="min-width:260px">Intelligence search<input id="graph-search" type="search" minlength="2" maxlength="100" placeholder="eBPF, cloud security, @engineer, organization"></label><button class="btn primary" id="graph-search-button" type="button">Search intelligence</button></div><div id="graph-search-status" class="status" aria-live="polite"></div><div id="graph-search-results" class="results"></div></div><div class="status" id="graph-status" aria-live="polite"></div><div class="data-box" style="margin-bottom:14px"><strong>Intelligence model</strong><div class="muted">Engineers are ranked from SNB security evidence; relationships require recorded evidence; communities represent the latest persisted analysis. Use <b>GitHub discovery</b> to explore candidates, then use the terminal/private analysis workflow to create a new intelligence run.</div><div class="meta" id="graph-snapshot-meta" style="margin-top:7px">Loading latest persisted snapshot…</div></div><div class="graph-tools"><label class="field">Edge type<select id="edge-type"><option value="">All relationships</option><option value="contributor">Repository contribution</option><option value="organization">Shared organization</option><option value="domain">Shared security domains</option></select></label></div>
 <div class="graph-wrap"><svg id="graph-svg" viewBox="0 0 1200 650" role="img" aria-label="Interactive security community graph. Use the accessible graph data below to navigate relationships." tabindex="0"></svg><div class="graph-hint">Scroll to zoom · drag empty space to pan · drag nodes · click a node for profile</div></div>
 <div class="graph-bottom"><div class="data-box"><h3>Intelligence overview</h3><div id="intelligence-overview" class="muted">Loading latest SNB intelligence…</div></div><div class="data-box"><h3>Community summary</h3><div id="community-summary" class="fallback"></div></div><div class="data-box"><h3>Centrality ranking</h3><ol id="centrality-ranking" class="fallback"></ol></div><div class="data-box"><h3>Graph legend</h3><div class="chips"><span class="chip">Blue · community 0</span><span class="chip">Purple · community 1</span><span class="chip">Green · community 3</span><span class="chip">Node size · score</span><span class="chip">Edge width · relationship weight</span></div><h4>Relationship evidence</h4><ul class="fallback"><li><b>Repository contribution</b> · both engineers contribute to the same repository.</li><li><b>Shared organization</b> · both engineers are public members of the same organization.</li><li><b>Shared security domains</b> · both engineers have matching SNB security-domain evidence.</li></ul><div class="meta">Edges are evidence-backed signals, not claims of personal association.</div></div><div class="data-box"><h3>Relationship details</h3><div id="edge-details" class="muted">Select a node to inspect its relationships.</div></div><div class="data-box"><h3>Accessible graph data</h3><ul id="graph-fallback" class="fallback"></ul></div></div>
 </section>
@@ -181,7 +181,7 @@ async function search(){
   let d;
   if(state.mode==="repos"){params.language=$("#language").value;params.min_stars=$("#min-stars").value;params.owner=$("#owner").value.trim();params.topic=$("#topic").value.trim();params.archived=$("#archived").value;params.fork=$("#fork").value;d=await getJson(apiUrl("/api/search",params))}
   else d=await getJson(apiUrl("/api/users/search",params));
-  state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults(); if(state.mode==="repos"){searchHistory.unshift({q,language:params.language||"",min_stars:params.min_stars||"0",sort:params.sort,owner:params.owner||"",topic:params.topic||"",at:new Date().toISOString()});sessionStorage.setItem("snb-search-history",JSON.stringify(searchHistory.slice(0,20)));renderHistory()}
+  state.results=d.results||[];state.page=d.page;state.mode==="repos"?renderRepoResults():renderUserResults();updateDiscoveryActions(); if(state.mode==="repos"){searchHistory.unshift({q,language:params.language||"",min_stars:params.min_stars||"0",sort:params.sort,owner:params.owner||"",topic:params.topic||"",at:new Date().toISOString()});sessionStorage.setItem("snb-search-history",JSON.stringify(searchHistory.slice(0,20)));renderHistory()}
   setStatus(state.results.length+" result(s) on page "+d.page+" · source "+(d.source||"github")+" · fetched "+new Date(d.generated_at).toLocaleTimeString(),"success");$("#page-label").textContent="Page "+d.page;$("#prev").disabled=state.page<=1;$("#next").disabled=state.results.length<state.limit;$("#export-results").disabled=!state.results.length;$("#export-json").disabled=!state.results.length;$("#export-markdown").disabled=!state.results.length;
  }catch(e){clear($("#results"));$("#results").appendChild(el("div",{class:"empty"},e.message));setStatus("");$("#status").appendChild(el("span",{},"Search failed · "));$("#status").appendChild(el("button",{class:"btn primary",onclick:()=>search()},"Retry"));$("#status").className="status error";$("#export-results").disabled=true;$("#export-json").disabled=true;$("#export-markdown").disabled=true}
 }
@@ -216,7 +216,7 @@ async function loadEngineer(login){
 }
 
 document.querySelectorAll(".tab").forEach(tab=>tab.addEventListener("click",()=>{
- document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));tab.classList.add("active");state.mode=tab.dataset.tab;state.results=[];state.query="";state.page=1;clear($("#results"));$("#export-results").disabled=true;$("#export-json").disabled=true;$("#export-markdown").disabled=true;$("#page-label").textContent="Page 1";$("#prev").disabled=$("#next").disabled=true;$("#repo-search").hidden=state.mode!=="repos";$("#user-search").hidden=state.mode!=="users";setStatus("")
+ document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));tab.classList.add("active");state.mode=tab.dataset.tab;state.results=[];state.query="";state.page=1;clear($("#results"));$("#export-results").disabled=true;$("#export-json").disabled=true;$("#export-markdown").disabled=true;$("#page-label").textContent="Page 1";$("#prev").disabled=$("#next").disabled=true;updateDiscoveryActions();$("#repo-search").hidden=state.mode!=="repos";$("#user-search").hidden=state.mode!=="users";setStatus("")
 }));
 $("#repo-form").addEventListener("submit",e=>{e.preventDefault();search()});$("#advanced-toggle").addEventListener("click",()=>{const n=$("#advanced-query"),open=n.hidden;n.hidden=!open;$("#advanced-toggle").setAttribute("aria-expanded",String(open))});function renderHistory(){const box=$("#history-list");clear(box);searchHistory.slice(0,10).forEach(h=>box.appendChild(el("button",{class:"btn",onclick:()=>{$("#q").value=h.q;$("#language").value=h.language;$("#min-stars").value=h.min_stars;$("#repo-sort").value=h.sort;$("#owner").value=h.owner;$("#topic").value=h.topic}},"History · "+h.q+" · "+h.sort)));savedSearches.slice(0,10).forEach(h=>box.appendChild(el("button",{class:"btn",onclick:()=>{$("#q").value=h.q;$("#language").value=h.language;$("#min-stars").value=h.min_stars;$("#repo-sort").value=h.sort;$("#owner").value=h.owner;$("#topic").value=h.topic}},"Saved · "+h.q+" · "+h.sort)));}$("#history-toggle").addEventListener("click",()=>{$("#history-panel").hidden=!$("#history-panel").hidden;renderHistory()});$("#save-search").addEventListener("click",()=>{if(!state.query)return;const item={mode:state.mode,q:state.query,sort:state.sort,language:$("#language").value,min_stars:$("#min-stars").value,owner:$("#owner").value.trim(),topic:$("#topic").value.trim()};if(!savedSearches.some(x=>JSON.stringify(x)===JSON.stringify(item))){savedSearches.unshift(item);localStorage.setItem("snb-saved-searches",JSON.stringify(savedSearches.slice(0,30)));setStatus("Search saved locally","success")}});$("#user-form").addEventListener("submit",e=>{e.preventDefault();search()});$("#prev").addEventListener("click",()=>page(-1));$("#next").addEventListener("click",()=>page(1));$("#close-profile").addEventListener("click",()=>$("#profile-card").hidden=true);let currentWorkspace=null;
 function workspaceHeaders(){return{"Content-Type":"application/json","X-API-Key":$("#workspace-key").value.trim()}}
@@ -324,10 +324,63 @@ function applyGraphSnapshot(data){
 }
 function apiErrorMessage(detail,fallback="Request failed"){if(typeof detail==="string"&&detail.trim())return detail;if(Array.isArray(detail)){const messages=detail.map(item=>{if(typeof item==="string")return item;if(item&&typeof item==="object"){const loc=Array.isArray(item.loc)?item.loc.filter(Boolean).join(" → "):"";const msg=typeof item.msg==="string"?item.msg:"Validation error";return loc?loc+": "+msg:msg}return String(item)}).filter(Boolean);if(messages.length)return messages.join("; ")}if(detail&&typeof detail==="object"){if(typeof detail.message==="string")return detail.message;if(typeof detail.error==="string")return detail.error}return fallback}
 
+async function analyzeDiscoverySearch(){
+ const query=state.query.trim();
+ if(state.mode!=="repos"||query.length<2)return;
+ const b=$("#analyze-discovery");
+ const payload={
+  query,limit:state.limit,top:15,sort:state.sort,
+  language:$("#language").value,
+  min_stars:Number($("#min-stars").value||0),
+  owner:$("#owner").value.trim()||null,
+  topic:$("#topic").value.trim()||null,
+  archived:$("#archived").value===""?null:$("#archived").value==="true",
+  fork:$("#fork").value===""?null:$("#fork").value==="true"
+ };
+ if(!confirm("Analyze this GitHub discovery as a new SNB intelligence snapshot? This is an explicit analysis action and will become the latest persisted graph snapshot."))return;
+ b.disabled=true;b.textContent="Analyzing…";setStatus("Running SNB analysis for this discovery…");
+ try{
+  const r=await fetch("/api/public/graph/build",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(apiErrorMessage(d.detail,"Intelligence analysis failed"));
+  setStatus("Analysis complete · intelligence run #"+d.run_id,"success");
+  await loadGraph();
+  $("#graph").scrollIntoView({behavior:"smooth",block:"start"});
+ }catch(e){setStatus(e instanceof Error?e.message:String(e),"error")}
+ finally{b.disabled=false;b.textContent="Analyze search → intelligence";updateDiscoveryActions()}
+}
+async function searchGraphIntelligence(){
+ const q=$("#graph-search").value.trim();
+ const box=$("#graph-search-results"),status=$("#graph-search-status");
+ clear(box);if(q.length<2){status.textContent="Enter at least 2 characters.";return}
+ status.textContent="Searching the persisted SNB snapshot…";
+ try{
+  const d=await getJson("/api/graph/search",{q,limit:20});
+  if(!d.results.length){status.textContent="No matching intelligence in run #"+(d.run_id??"n/a");return}
+  status.textContent=d.results.length+" match(es) · read-only snapshot search";
+  d.results.forEach(x=>{
+   const card=el("div",{class:"result"},
+    el("div",{class:"result-top"},
+     el("h3",{},el("button",{class:"btn",onclick:()=>showNode(x.login)},"@"+x.login)),
+     el("span",{class:"meta"},"Score "+Number(x.score||0)+" · centrality "+Number(x.centrality||0))
+    ),
+    el("div",{class:"chips"},(x.matched_domains||[]).map(v=>el("span",{class:"chip"},v))),
+    el("p",{class:"meta"},(x.orgs||[]).length?"Organizations: "+x.orgs.join(", "):"No organization evidence recorded."),
+    el("p",{class:"muted"},(x.evidence||[]).join(" · ")||"No additional evidence text recorded.")
+   );
+   box.appendChild(card);
+  });
+ }catch(e){status.textContent=e instanceof Error?e.message:String(e)}
+}
+function updateDiscoveryActions(){
+ const b=$("#analyze-discovery");
+ if(b)b.disabled=state.mode!=="repos"||state.query.trim().length<2||!state.results.length;
+}
 async function loadGraph(){
  try{const d=await getJson("/api/graph");applyGraphSnapshot(d)}catch(e){setGraphStatus(e.message)}
 }
-$("#refresh-graph").addEventListener("click",async()=>{const b=$("#refresh-graph");b.disabled=true;b.textContent="Refreshing…";setGraphStatus("Reloading the latest persisted intelligence snapshot…");try{await loadGraph();setGraphStatus("Latest persisted intelligence snapshot loaded.");}finally{b.disabled=false;b.textContent="Refresh intelligence"}});
+$("#analyze-discovery").addEventListener("click",analyzeDiscoverySearch);$("#graph-search-button").addEventListener("click",searchGraphIntelligence);$("#graph-search").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchGraphIntelligence()}});$("#refresh-graph").addEventListener("click",async()=>{const b=$("#refresh-graph");b.disabled=true;b.textContent="Refreshing…";setGraphStatus("Reloading the latest persisted intelligence snapshot…");try{await loadGraph();setGraphStatus("Latest persisted intelligence snapshot loaded.");}finally{b.disabled=false;b.textContent="Refresh intelligence"}});
+updateDiscoveryActions();
 const initialEngineer=new URLSearchParams(location.search).get("engineer");if(initialEngineer)loadEngineer(initialEngineer);
 loadUsage();loadGraph();
 </script>

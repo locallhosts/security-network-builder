@@ -19,7 +19,7 @@ def test_shared_two_domains_create_evidence_backed_edge():
     graph = build_graph([
         rec("alice", ["Cloud Security", "eBPF"], ["AcmeSec"], 20),
         rec("bob", ["Cloud Security", "eBPF"], ["OtherSec"], 10),
-        rec("carol", ["Cloud Security"], ["OtherSec"], 8),
+        rec("carol", ["Cloud Security"], ["ThirdSec"], 8),
     ])
 
     assert len(graph.edges) == 1

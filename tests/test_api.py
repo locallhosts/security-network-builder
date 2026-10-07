@@ -46,9 +46,64 @@ def test_public_graph_build_rejects_empty_analysis_with_actionable_error(monkeyp
     assert "broader query" in detail["message"]
 
 
+def test_public_graph_build_recovers_human_contributors_from_security_org_repo(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNB_HISTORY_DB", str(tmp_path / "history.db"))
+    monkeypatch.setattr(
+        "snb.api.app.GitHubClient.search_repositories",
+        lambda self, query, per_page=30, page=1, sort="stars": [
+            {
+                "full_name": "OWASP/CheatSheetSeries",
+                "description": "OWASP application security cheat sheets",
+                "topics": ["owasp", "appsec"],
+                "stargazers_count": 30000,
+                "language": "JavaScript",
+                "owner": {"login": "OWASP", "type": "Organization", "html_url": "https://github.com/OWASP"},
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        "snb.api.app.GitHubClient.list_contributors",
+        lambda self, full_name, limit=30: [
+            {"login": "alice", "html_url": "https://github.com/alice", "type": "User"},
+            {"login": "bot[bot]", "html_url": "https://github.com/apps/bot", "type": "Bot"},
+        ],
+    )
+    monkeypatch.setattr("snb.api.app.enrich_rest", lambda *args, **kwargs: None)
+
+    seen = {}
+
+    def fake_analyse(client, ranked, profile, api, min_score):
+        seen["logins"] = [candidate.login for candidate in ranked]
+        return [
+            Recommendation(
+                login="alice",
+                url="https://github.com/alice",
+                score=18.0,
+                matched_domains=["Application Security"],
+                breakdown={"Application Security": 7.0},
+                evidence=["Application Security: OWASP/CheatSheetSeries (owasp)"],
+                matched_repos=[{"name": "OWASP/CheatSheetSeries"}],
+                via="contributor of OWASP/CheatSheetSeries",
+            )
+        ]
+
+    monkeypatch.setattr("snb.api.app.analyse", fake_analyse)
+    response = TestClient(app).post("/api/public/graph/build", json={"query": "owasp"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "alice" in seen["logins"]
+    assert "OWASP" not in seen["logins"]
+    assert data["organization_repositories_analyzed"] == 1
+    assert data["contributors_considered"] == 1
+    assert data["engineers"] == 1
+
+
 def test_public_graph_build_persists_and_reloads_current_snapshot(monkeypatch, tmp_path):
     db = str(tmp_path / "history.db")
     monkeypatch.setenv("SNB_HISTORY_DB", db)
+    # This test performs two explicit analysis requests; keep the public
+    # limiter out of the way so it exercises persistence, not throttling.
+    monkeypatch.setenv("SNB_RATE_LIMIT_GRAPH_BUILD", "10")
     search_items = [
         {"full_name": "acme/runtime-security", "description": "runtime security", "stargazers_count": 25, "language": "Go", "owner": {"login": "alice", "type": "User", "html_url": "https://github.com/alice"}},
         {"full_name": "acme/ebpf-tool", "description": "eBPF security", "stargazers_count": 20, "language": "Go", "owner": {"login": "bob", "type": "User", "html_url": "https://github.com/bob"}},

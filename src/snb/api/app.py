@@ -755,7 +755,20 @@ def build_public_graph(payload: PublicGraphBuildRequest, request: Request, respo
     excluded = {u.lower() for u in profile.settings.exclude_users}
     if profile.github_username:
         excluded.add(profile.github_username.lower())
+
     candidates: dict[str, Candidate] = {}
+    organization_repos = sorted(
+        (
+            item
+            for item in items
+            if (item.get("owner") or {}).get("type") == "Organization"
+            and profile.match_repo(item)
+        ),
+        key=lambda item: int(item.get("stargazers_count") or 0),
+        reverse=True,
+    )[:8]
+    contributors_considered = 0
+
     for item in items:
         owner_data = item.get("owner") or {}
         login = owner_data.get("login")
@@ -768,6 +781,34 @@ def build_public_graph(payload: PublicGraphBuildRequest, request: Request, respo
             Candidate(login=login, html_url=owner_data.get("html_url", f"https://github.com/{login}")),
         )
         candidate.seed_repos.append(item)
+
+    # A security repository owned by an organization is not itself an engineer.
+    # When the user explicitly hands discovery results to intelligence, recover
+    # the human contributors behind the strongest matching organization repos.
+    # This keeps the public graph engineer-centric without treating an org as a person.
+    for item in organization_repos:
+        full_name = item.get("full_name")
+        if not isinstance(full_name, str):
+            continue
+        for contributor in client.list_contributors(full_name, limit=5):
+            login = contributor.get("login")
+            if (
+                not isinstance(login, str)
+                or not login
+                or login.lower() in excluded
+                or contributor.get("type") != "User"
+            ):
+                continue
+            candidate = candidates.setdefault(
+                login,
+                Candidate(
+                    login=login,
+                    html_url=contributor.get("html_url", f"https://github.com/{login}"),
+                    via=f"contributor of {full_name}",
+                ),
+            )
+            candidate.seed_repos.append(item)
+            contributors_considered += 1
 
     ranked = sorted(candidates.values(), key=lambda c: c.seed_weight, reverse=True)
     recs = analyse(client, ranked, profile, "rest", payload.min_score)
@@ -799,6 +840,8 @@ def build_public_graph(payload: PublicGraphBuildRequest, request: Request, respo
         "query": payload.query,
         "search_query": search_query,
         "candidates": len(candidates),
+        "organization_repositories_analyzed": len(organization_repos),
+        "contributors_considered": contributors_considered,
         "engineers": len(recs),
         "run_id": run_id,
         "generated_at": datetime.now(timezone.utc).isoformat(),

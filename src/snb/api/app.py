@@ -792,7 +792,12 @@ def build_public_graph(payload: PublicGraphBuildRequest, request: Request, respo
             continue
         for contributor in client.list_contributors(full_name, limit=5):
             login = contributor.get("login")
-            if not isinstance(login, str) or not login or login.lower() in excluded:
+            if (
+                not isinstance(login, str)
+                or not login
+                or login.lower() in excluded
+                or contributor.get("type") != "User"
+            ):
                 continue
             candidate = candidates.setdefault(
                 login,

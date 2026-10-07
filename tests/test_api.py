@@ -101,6 +101,9 @@ def test_public_graph_build_recovers_human_contributors_from_security_org_repo(m
 def test_public_graph_build_persists_and_reloads_current_snapshot(monkeypatch, tmp_path):
     db = str(tmp_path / "history.db")
     monkeypatch.setenv("SNB_HISTORY_DB", db)
+    # This test performs two explicit analysis requests; keep the public
+    # limiter out of the way so it exercises persistence, not throttling.
+    monkeypatch.setenv("SNB_RATE_LIMIT_GRAPH_BUILD", "10")
     search_items = [
         {"full_name": "acme/runtime-security", "description": "runtime security", "stargazers_count": 25, "language": "Go", "owner": {"login": "alice", "type": "User", "html_url": "https://github.com/alice"}},
         {"full_name": "acme/ebpf-tool", "description": "eBPF security", "stargazers_count": 20, "language": "Go", "owner": {"login": "bob", "type": "User", "html_url": "https://github.com/bob"}},

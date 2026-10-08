@@ -2,5 +2,5 @@
   "name": "snb-dashboard-dom-test",
   "private": true,
   "description": "Runs the dashboard page in a real DOM (jsdom) against a live local server.",
-  "devDependencies": { "jsdom": "24.1.3" }
+  "devDependencies": { "jsdom": "30.1.2" }
 }

@@ -34,7 +34,7 @@ Issues = "https://github.com/locallhosts/security-network-builder/issues"
 
 [project.optional-dependencies]
 postgres = ["psycopg[binary]>=3.2,<4"]
-pdf = ["reportlab>=4.0,<5"]
+pdf = ["reportlab>=4.0,<6"]
 dev = ["pytest>=7.0", "httpx>=0.27", "pip-audit>=2.7"]
 
 [project.scripts]
